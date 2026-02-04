@@ -1,0 +1,170 @@
+[project]
+name = "mvpy"
+version = "0.1.0"
+description = "Проект для быстрого запуска MVP на Python и speckit"
+requires-python = ">=3.13"
+dependencies = [
+    "alembic>=1.17.2",
+    "asyncpg>=0.31.0",
+    "fastapi[standard]>=0.128.1",
+    "greenlet>=3.3.0",
+    "httpx>=0.28.1",
+    "pydantic>=2.12.5",
+    "pydantic-settings>=2.12.0",
+    "python-dotenv>=1.2.1",
+    "sqlalchemy>=2.0.45",
+]
+
+[dependency-groups]
+dev = [
+    "faker>=40.1.0",
+    "mypy>=1.19.1",
+    "pre-commit>=4.5.1",
+    "pytest-asyncio>=0.26.0",
+    "pytest-cov>=7.0.0",
+    "ruff>=0.14.10",
+]
+
+[tool.mypy]
+python_version = 3.13
+plugins = "pydantic.mypy"
+ignore_missing_imports = true
+
+# https://docs.pydantic.dev/latest/integrations/mypy/#enabling-the-plugin
+follow_imports = "silent"
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+# https://mypy.readthedocs.io/en/stable/config_file.html#using-a-pyproject-toml-file
+module = "dateutil.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "aiofiles"
+ignore_missing_imports = true
+
+[tool.ruff]
+# https://beta.ruff.rs/docs/rules/
+lint.select = [
+    "E", # Ошибки PyCodeStyle
+    "W", # Предупреждения PyCodeStyle
+    "I", # isort
+    "N", # pep8-naming
+    "F", # Pyflakes
+    "UP", # pyupgrade
+    "T20", # flake8-print
+    "SIM", # flake8-simplify
+    "B", # flake8-bugbear
+    "ASYNC", # flake8-async
+    "G", # flake8-logging-format
+    "DTZ", # flake8-datetimez, раскомментировать после рефакторинга
+    "D", # Докстринги - самый строгий линтер
+    "RUF", # Правила, специфичные для Ruff
+    "ANN", # Необходимые типы (недокументированные foo)
+]
+lint.ignore = [
+    "ANN002", #  ANN002 Отсутствуют аннотации типов для `*a`
+    "ANN003", #  ANN003 Отсутствуют аннотации типов для `**kw`
+    "ANN401", # ANN401 Динамически типизированные выражения (typing.Any) запрещены в `record`
+
+    "D100", # D100 Отсутствует докстринг в публичном модуле
+    "D101", # D101 Отсутствует докстринг в публичном классе
+    "D104", #  D104 Отсутствует докстринг в публичном пакете
+    "D105", # D105 Отсутствует докстринг в магическом методе
+    "D106", # D106 Отсутствует докстринг в публичном вложенном классе
+    "D107", # Отсутствует докстринг в `__init__`
+    "D202", # D202 Не допускаются пустые строки после докстринга функции
+
+    "N805", # N805 Первый аргумент метода должен быть назван `self`
+    "B008", # B008 Не выполняйте вызов функции `Depends` в значениях аргументов по умолчанию
+
+    "RUF001", # Строка содержит неоднозначность
+    "RUF002", # Докстринг содержит неоднозначность
+    "RUF003", # Комментарий содержит неоднозначность
+    "RUF012", # Мутируемые классовые атрибуты должны быть ___annotated_types с `typing.ClassVar`
+
+    "W291", # Пробелы в конце строки
+]
+lint.extend-select = [
+    "B006", # mutable-argument-default
+    "PIE794", # duplicate-class-field-definition
+]
+
+# Разрешить неиспользуемые переменные с префиксом _
+lint.dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+# Показать все исправления с флагом --fix
+show-fixes = true
+
+
+# Исключить различные часто игнорируемые директории.
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+    ".venv",
+    "env",
+    ".js",
+    "migration"
+]
+
+# Тот же, что и у Black.
+line-length = 100
+
+# Предположим, что используется Python 3.13.
+target-version = "py313"
+
+[tool.ruff.lint.isort]
+force-wrap-aliases = true
+force-single-line = true
+combine-as-imports = false
+lines-between-types = 1
+
+[tool.ruff.lint.pydocstyle]
+# Используем стиль докстрингов Google.
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"migrations/*.py" = ["D", "E402", "E501", "ANN"]
+"tests/*.py" = ["D", "DTZ", "E501", "ANN"]
+"tests/conftest.py" = ["E402"]
+"notebooks/*.ipynb" = ["T201", "T203", "F405", "D", "ANN", "F403"]
+"tests/libraries/schemas/source_systems/*.py" = ["N815"]
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+skip-magic-trailing-comma = false
+
+# Настройки покрытия
+[tool.coverage.run]
+branch = true
+source = ["app"]
+omit = [
+    "*/__init__.py",
+    "tests/*",
+    "*/tests/*",
+    "app/main.py",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true
