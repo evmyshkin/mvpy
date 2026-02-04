@@ -221,11 +221,4 @@ CLAUDE.md
 
 # OS
 .DS_Store
-/.idea/codeStyles/codeStyleConfig.xml
-/.idea/misc.xml
-/.idea/modules.xml
-/.idea/mvpy.iml
-/.idea/inspectionProfiles/profiles_settings.xml
-/.idea/inspectionProfiles/Project_Default.xml
-/.idea/ruff.xml
-/.idea/vcs.xml
+/.idea
