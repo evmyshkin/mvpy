@@ -5,17 +5,18 @@ Revises: 59be4b661082
 Create Date: 2026-02-05 16:45:55.961379
 
 """
-from typing import Sequence, Union
 
-from alembic import op
+from collections.abc import Sequence
+
 import sqlalchemy as sa
 
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = '77ca4a3c8afb'
-down_revision: Union[str, Sequence[str], None] = '59be4b661082'
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | Sequence[str] | None = '59be4b661082'
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -32,7 +33,12 @@ def schema_upgrades() -> None:
     """Schema upgrade migrations go here."""
     op.add_column(
         'users',
-        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('NOW()'), nullable=False),
+        sa.Column(
+            'created_at',
+            sa.DateTime(timezone=True),
+            server_default=sa.text('NOW()'),
+            nullable=False,
+        ),
     )
     op.add_column(
         'users',

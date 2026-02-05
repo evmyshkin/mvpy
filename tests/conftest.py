@@ -1,16 +1,22 @@
 """Fixtures для тестирования."""
 
 import asyncio
-from collections.abc import AsyncGenerator, Generator
+
+from collections.abc import AsyncGenerator
+from collections.abc import Generator
 
 import pytest
 import pytest_asyncio
-from faker import Faker
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from app.api.utils.enums.env_enum import EnvEnum
+from faker import Faker
+from httpx import ASGITransport
+from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import async_sessionmaker
+from sqlalchemy.ext.asyncio import create_async_engine
+
 from app.api.v1.schemas.users import UserCreateRequest
+from app.api.v1.schemas.users import UserUpdateRequest
 from app.config import config
 from app.db.base import BaseDBModel
 from app.db.session import DBConnector
@@ -19,7 +25,7 @@ from app.services.user_service import UserService
 
 
 @pytest.fixture(scope='session')
-def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
+def event_loop() -> Generator[asyncio.AbstractEventLoop]:
     """Создать event loop для асинхронных тестов.
 
     Yields:
@@ -70,7 +76,7 @@ async def test_db_engine():
 
 
 @pytest_asyncio.fixture
-async def db_session(test_db_engine) -> AsyncGenerator[AsyncSession, None]:
+async def db_session(test_db_engine) -> AsyncGenerator[AsyncSession]:
     """Создать асинхронную сессию БД для тестов.
 
     Args:
@@ -86,13 +92,15 @@ async def db_session(test_db_engine) -> AsyncGenerator[AsyncSession, None]:
         autoflush=False,
     )
 
-    async with async_session_maker() as session:
-        yield session
+    # Начинаем транзакцию на уровне фикстуры
+    async with async_session_maker() as session, session.begin():  # Начинаем транзакцию здесь
+        yield session  # Передаем сессию в тест
+        # Откат после теста
         await session.rollback()
 
 
 @pytest_asyncio.fixture
-async def async_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
+async def async_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient]:
     """Создать асинхронный HTTP клиент для тестирования FastAPI.
 
     Args:
@@ -137,11 +145,31 @@ def valid_user_request(faker: Faker) -> UserCreateRequest:
 
 
 @pytest.fixture
-def user_service() -> UserService:
-    """Fixture для UserService.
+def user_service(db_session: AsyncSession) -> UserService:
+    """Fixture для UserService с тестовой сессией БД.
+
+    Args:
+        db_session: Тестовая сессия БД
 
     Returns:
-        Экземпляр UserService
+        Экземпляр UserService, готовый к использованию с db_session
     """
     return UserService()
 
+
+@pytest.fixture
+def update_user_request(faker: Faker) -> UserUpdateRequest:
+    """Валидный запрос на обновление пользователя.
+
+    Args:
+        faker: Генератор тестовых данных
+
+    Returns:
+        Pydantic схема UserUpdateRequest с валидными данными
+    """
+    return UserUpdateRequest(
+        email=faker.email(),
+        first_name='Пётр',
+        last_name='Петров',
+        password='NewPassword456',
+    )

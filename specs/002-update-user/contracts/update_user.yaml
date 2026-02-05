@@ -1,0 +1,233 @@
+openapi: 3.0.3
+info:
+  title: Update User API
+  description: API для обновления информации о пользователях
+  version: 1.0.0
+  contact:
+    name: API Support
+
+servers:
+  - url: http://localhost:8000
+    description: Локальный сервер разработки
+  - url: http://{env}:{port}
+    description: Другие окружения
+    variables:
+      env:
+        default: localhost
+        enum:
+          - localhost
+          - dev
+          - staging
+      port:
+        default: '8000'
+
+tags:
+  - name: users
+    description: Операции с пользователями
+
+paths:
+  /api/v1/users/{user_id}:
+    put:
+      tags:
+        - users
+      summary: Обновить пользователя
+      description: Обновляет информацию о существующем пользователе. Все поля опциональны.
+      operationId: updateUser
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: Уникальный идентификатор пользователя
+          schema:
+            type: integer
+            format: int64
+            example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdateRequest'
+            examples:
+              updateAllFields:
+                summary: Обновление всех полей
+                value:
+                  email: "newemail@example.com"
+                  first_name: "Иван"
+                  last_name: "Иванов"
+                  password: "NewSecure123"
+              partialUpdate:
+                summary: Частичное обновление (только имя)
+                value:
+                  first_name: "Петр"
+              updatePassword:
+                summary: Обновление только пароля
+                value:
+                  password: "NewSecure456"
+      responses:
+        '200':
+          description: Пользователь успешно обновлён
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserUpdateResponse'
+              examples:
+                success:
+                  summary: Успешное обновление
+                  value:
+                    id: 1
+                    email: "newemail@example.com"
+                    first_name: "Иван"
+                    last_name: "Иванов"
+        '400':
+          description: Email уже существует в системе
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                detail: "Пользователь с таким email уже существует"
+        '404':
+          description: Пользователь не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                detail: "Пользователь не найден"
+        '422':
+          description: Ошибка валидации входных данных
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+              example:
+                detail:
+                  - {
+                      "loc": ["body", "first_name"],
+                      "msg": "Должно содержать только русские/английские буквы и тире",
+                      "type": "value_error"
+                    }
+                  - {
+                      "loc": ["body", "password"],
+                      "msg": "Пароль должен содержать минимум 1 заглавную букву",
+                      "type": "value_error"
+                    }
+
+components:
+  schemas:
+    UserUpdateRequest:
+      type: object
+      description: Запрос на обновление пользователя. Все поля опциональны.
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 255
+          description: Новый email адрес
+          example: "newemail@example.com"
+        first_name:
+          type: string
+          maxLength: 100
+          pattern: '^[А-Яа-яA-Za-z\-]+$'
+          description: Новое имя (только буквы и дефисы)
+          example: "Иван"
+          nullable: true
+        last_name:
+          type: string
+          maxLength: 100
+          pattern: '^[А-Яа-яA-Za-z\-]+$'
+          description: Новая фамилия (только буквы и дефисы)
+          example: "Иванов"
+          nullable: true
+        password:
+          type: string
+          minLength: 8
+          maxLength: 100
+          description: Новый пароль (минимум 8 символов, 1 заглавная, 1 строчная, 1 цифра)
+          example: "NewSecure123"
+          nullable: true
+
+    UserUpdateResponse:
+      type: object
+      description: Ответ при успешном обновлении пользователя
+      required:
+        - id
+        - email
+        - first_name
+        - last_name
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Уникальный идентификатор пользователя
+          example: 1
+        email:
+          type: string
+          format: email
+          description: Email адрес пользователя
+          example: "newemail@example.com"
+        first_name:
+          type: string
+          description: Имя пользователя
+          example: "Иван"
+        last_name:
+          type: string
+          description: Фамилия пользователя
+          example: "Иванов"
+
+    ErrorResponse:
+      type: object
+      description: Стандартный ответ с ошибкой
+      required:
+        - detail
+      properties:
+        detail:
+          type: string
+          description: Описание ошибки на русском языке
+          example: "Пользователь не найден"
+
+    ValidationError:
+      type: object
+      description: Ошибка валидации Pydantic
+      required:
+        - detail
+      properties:
+        detail:
+          type: array
+          items:
+            type: object
+            required:
+              - loc
+              - msg
+              - type
+            properties:
+              loc:
+                type: array
+                items:
+                  type: string
+                description: Путь к невалидному полю
+                example: ["body", "first_name"]
+              msg:
+                type: string
+                description: Сообщение об ошибке
+                example: "Должно содержать только русские/английские буквы и тире"
+              type:
+                type: string
+                description: Тип ошибки
+                example: "value_error"
+
+  examples:
+    successfulUpdate:
+      summary: Пример успешного обновления
+      value:
+        request:
+          email: "newemail@example.com"
+          first_name: "Иван"
+          last_name: "Иванов"
+          password: "NewSecure123"
+        response:
+          id: 1
+          email: "newemail@example.com"
+          first_name: "Иван"
+          last_name: "Иванов"

@@ -1,9 +1,11 @@
-"""Тесты для создания пользователей."""
+"""Тесты для создания и обновления пользователей."""
 
 import pytest
+
 from httpx import AsyncClient
 
 from app.api.v1.schemas.users import UserCreateRequest
+from app.api.v1.schemas.users import UserUpdateRequest
 
 
 @pytest.mark.asyncio
@@ -334,3 +336,223 @@ async def test_create_user_password_too_long_fails(
     assert response.status_code == 422
     errors = response.json()['detail']
     assert any('password' in str(err) for err in errors)
+
+
+# Тесты для обновления пользователя (PUT /api/v1/users/{id})
+@pytest.mark.asyncio
+async def test_update_user_success(
+    async_client: AsyncClient,
+    valid_user_request: UserCreateRequest,
+    faker,
+) -> None:
+    """Успешное обновление всех полей пользователя (200)."""
+    # Arrange - создаём пользователя
+    create_response = await async_client.post(
+        '/api/v1/users/',
+        json=valid_user_request.model_dump(),
+    )
+    assert create_response.status_code == 201
+    user_id = create_response.json()['id']
+
+    # Act - обновляем пользователя через Pydantic схему
+    update_request = UserUpdateRequest(
+        email=faker.email(),
+        first_name='Пётр',
+        last_name='Петров',
+        password='NewPassword456',
+    )
+    update_response = await async_client.put(
+        f'/api/v1/users/{user_id}',
+        json=update_request.model_dump(),
+    )
+
+    # Assert
+    assert update_response.status_code == 200
+    data = update_response.json()
+    assert data['id'] == user_id
+    assert data['first_name'] == 'Пётр'
+    assert data['last_name'] == 'Петров'
+    assert 'password' not in data
+    assert 'password_hash' not in data
+
+
+@pytest.mark.asyncio
+async def test_update_user_partial(
+    async_client: AsyncClient,
+    valid_user_request: UserCreateRequest,
+) -> None:
+    """Частичное обновление одного поля (200)."""
+    # Arrange
+    create_response = await async_client.post(
+        '/api/v1/users/',
+        json=valid_user_request.model_dump(),
+    )
+    user_id = create_response.json()['id']
+    original_email = create_response.json()['email']
+
+    # Act - обновляем только first_name через Pydantic
+    update_request = UserUpdateRequest(first_name='Пётр')
+    update_response = await async_client.put(
+        f'/api/v1/users/{user_id}',
+        json=update_request.model_dump(),
+    )
+
+    # Assert
+    assert update_response.status_code == 200
+    data = update_response.json()
+    assert data['id'] == user_id
+    assert data['first_name'] == 'Пётр'
+    assert data['email'] == original_email  # Без изменений
+
+
+@pytest.mark.asyncio
+async def test_update_user_not_found(
+    async_client: AsyncClient,
+) -> None:
+    """Несуществующий user_id (404)."""
+    update_request = UserUpdateRequest(first_name='Пётр')
+    response = await async_client.put(
+        '/api/v1/users/99999',
+        json=update_request.model_dump(),
+    )
+
+    assert response.status_code == 404
+    assert response.json()['detail'] == 'Пользователь не найден'
+
+
+@pytest.mark.asyncio
+async def test_update_user_duplicate_email(
+    async_client: AsyncClient,
+    valid_user_request: UserCreateRequest,
+    faker,
+) -> None:
+    """Duplicate email (400)."""
+    # Arrange - создаём двух пользователей
+    response1 = await async_client.post(
+        '/api/v1/users/',
+        json=valid_user_request.model_dump(),
+    )
+    user1_id = response1.json()['id']
+
+    user2_request = UserCreateRequest(
+        email=faker.email(),
+        first_name='Мария',
+        last_name='Сидорова',
+        password='Password123',
+    )
+    response2 = await async_client.post(
+        '/api/v1/users/',
+        json=user2_request.model_dump(),
+    )
+    user2_email = response2.json()['email']
+
+    # Act - пытаемся обновить user1 с email пользователя user2 через Pydantic
+    update_request = UserUpdateRequest(email=user2_email)
+    update_response = await async_client.put(
+        f'/api/v1/users/{user1_id}',
+        json=update_request.model_dump(),
+    )
+
+    # Assert
+    assert update_response.status_code == 400
+    assert update_response.json()['detail'] == 'Пользователь с таким email уже существует'
+
+
+@pytest.mark.asyncio
+async def test_update_user_invalid_email(
+    async_client: AsyncClient,
+    valid_user_request: UserCreateRequest,
+) -> None:
+    """Невалидный формат email (422)."""
+    create_response = await async_client.post(
+        '/api/v1/users/',
+        json=valid_user_request.model_dump(),
+    )
+    user_id = create_response.json()['id']
+
+    # Pydantic не позволит создать невалидный UserUpdateRequest,
+    # поэтому тестируем на уровне HTTP с невалидным JSON
+    response = await async_client.put(
+        f'/api/v1/users/{user_id}',
+        json={'email': 'invalid-email'},
+    )
+
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_update_user_invalid_name(
+    async_client: AsyncClient,
+    valid_user_request: UserCreateRequest,
+) -> None:
+    """Имя с цифрами (422)."""
+    create_response = await async_client.post(
+        '/api/v1/users/',
+        json=valid_user_request.model_dump(),
+    )
+    user_id = create_response.json()['id']
+
+    # Тестируем на уровне HTTP с невалидными данными
+    response = await async_client.put(
+        f'/api/v1/users/{user_id}',
+        json={'first_name': 'Иван1'},
+    )
+
+    assert response.status_code == 422
+    errors = response.json()['detail']
+    assert any('first_name' in str(err) for err in errors)
+
+
+@pytest.mark.asyncio
+async def test_update_user_weak_password(
+    async_client: AsyncClient,
+    valid_user_request: UserCreateRequest,
+) -> None:
+    """Слабый пароль (422)."""
+    create_response = await async_client.post(
+        '/api/v1/users/',
+        json=valid_user_request.model_dump(),
+    )
+    user_id = create_response.json()['id']
+
+    response = await async_client.put(
+        f'/api/v1/users/{user_id}',
+        json={'password': 'weak'},
+    )
+
+    assert response.status_code == 422
+    errors = response.json()['detail']
+    assert any('password' in str(err) for err in errors)
+
+
+@pytest.mark.asyncio
+async def test_update_user_all_errors(
+    async_client: AsyncClient,
+    valid_user_request: UserCreateRequest,
+) -> None:
+    """Множественные ошибки валидации (422)."""
+    create_response = await async_client.post(
+        '/api/v1/users/',
+        json=valid_user_request.model_dump(),
+    )
+    user_id = create_response.json()['id']
+
+    response = await async_client.put(
+        f'/api/v1/users/{user_id}',
+        json={
+            'email': 'invalid',
+            'first_name': 'Иван1',
+            'last_name': 'Петров_Сидоров',
+            'password': 'weak',
+        },
+    )
+
+    assert response.status_code == 422
+    errors = response.json()['detail']
+    # Проверяем наличие множественных ошибок
+    error_fields = {
+        err['loc'][0] for err in errors if isinstance(err.get('loc'), list) and err['loc']
+    }
+    assert 'email' in error_fields or any('email' in str(err).lower() for err in errors)
+    assert 'first_name' in error_fields or any('first_name' in str(err).lower() for err in errors)
+    assert 'password' in error_fields or any('password' in str(err).lower() for err in errors)
