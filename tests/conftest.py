@@ -1,9 +1,6 @@
 """Fixtures для тестирования."""
 
-import asyncio
-
 from collections.abc import AsyncGenerator
-from collections.abc import Generator
 
 import pytest
 import pytest_asyncio
@@ -11,9 +8,11 @@ import pytest_asyncio
 from faker import Faker
 from httpx import ASGITransport
 from httpx import AsyncClient
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.pool import NullPool
 
 from app.api.v1.schemas.users import UserCreateRequest
 from app.api.v1.schemas.users import UserUpdateRequest
@@ -22,18 +21,6 @@ from app.db.base import BaseDBModel
 from app.db.session import DBConnector
 from app.main import app
 from app.services.user_service import UserService
-
-
-@pytest.fixture(scope='session')
-def event_loop() -> Generator[asyncio.AbstractEventLoop]:
-    """Создать event loop для асинхронных тестов.
-
-    Yields:
-        Event loop
-    """
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
 
 
 @pytest.fixture(scope='session')
@@ -46,7 +33,7 @@ def faker() -> Faker:
     return Faker()
 
 
-@pytest_asyncio.fixture(scope='session')
+@pytest_asyncio.fixture
 async def test_db_engine():
     """Создать тестовый движок БД для PYTEST окружения.
 
@@ -64,7 +51,11 @@ async def test_db_engine():
     test_config = Settings()
     test_database_url = test_config.postgres.test_database_uri
 
-    engine = create_async_engine(test_database_url, echo=False)
+    engine = create_async_engine(
+        test_database_url,
+        echo=False,
+        poolclass=NullPool,
+    )
 
     # Создаем таблицы
     async with engine.begin() as conn:
@@ -77,7 +68,10 @@ async def test_db_engine():
 
 @pytest_asyncio.fixture
 async def db_session(test_db_engine) -> AsyncGenerator[AsyncSession]:
-    """Создать асинхронную сессию БД для тестов.
+    """Создать асинхронную сессию БД для тестов с очисткой через TRUNCATE.
+
+    TRUNCATE используется вместо rollback, так как CRUD методы выполняют
+    реальный commit() в базу данных.
 
     Args:
         test_db_engine: Тестовый движок БД
@@ -92,11 +86,22 @@ async def db_session(test_db_engine) -> AsyncGenerator[AsyncSession]:
         autoflush=False,
     )
 
-    # Начинаем транзакцию на уровне фикстуры
-    async with async_session_maker() as session, session.begin():  # Начинаем транзакцию здесь
-        yield session  # Передаем сессию в тест
-        # Откат после теста
-        await session.rollback()
+    session = async_session_maker()
+
+    # Очистка перед тестом
+    async with test_db_engine.begin() as conn:
+        for table in BaseDBModel.metadata.sorted_tables:
+            await conn.execute(text(f'TRUNCATE TABLE {table.name} CASCADE'))
+
+    try:
+        yield session
+    finally:
+        # Закрываем сессию
+        await session.close()
+        # Очистка после теста, чтобы в БД не оставалось данных
+        async with test_db_engine.begin() as conn:
+            for table in BaseDBModel.metadata.sorted_tables:
+                await conn.execute(text(f'TRUNCATE TABLE {table.name} CASCADE'))
 
 
 @pytest_asyncio.fixture
@@ -144,8 +149,8 @@ def valid_user_request(faker: Faker) -> UserCreateRequest:
     )
 
 
-@pytest.fixture
-def user_service(db_session: AsyncSession) -> UserService:
+@pytest_asyncio.fixture
+async def user_service(db_session: AsyncSession) -> UserService:
     """Fixture для UserService с тестовой сессией БД.
 
     Args:

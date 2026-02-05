@@ -6,6 +6,7 @@ from httpx import AsyncClient
 
 from app.api.v1.schemas.users import UserCreateRequest
 from app.api.v1.schemas.users import UserUpdateRequest
+from app.services.error_messages import ErrorMessages
 
 
 @pytest.mark.asyncio
@@ -70,7 +71,7 @@ async def test_create_user_duplicate_email(
 
     assert response2.status_code == 409
     detail = response2.json()['detail']
-    assert detail == 'Пользователь с таким email уже существует'
+    assert detail == ErrorMessages.USER_EMAIL_EXISTS.value
 
 
 @pytest.mark.asyncio
@@ -417,7 +418,7 @@ async def test_update_user_not_found(
     )
 
     assert response.status_code == 404
-    assert response.json()['detail'] == 'Пользователь не найден'
+    assert response.json()['detail'] == ErrorMessages.USER_NOT_FOUND.value
 
 
 @pytest.mark.asyncio
@@ -455,7 +456,7 @@ async def test_update_user_duplicate_email(
 
     # Assert
     assert update_response.status_code == 400
-    assert update_response.json()['detail'] == 'Пользователь с таким email уже существует'
+    assert update_response.json()['detail'] == ErrorMessages.USER_EMAIL_EXISTS.value
 
 
 @pytest.mark.asyncio

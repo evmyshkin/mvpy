@@ -12,6 +12,7 @@ from app.api.v1.schemas.users import UserCreateResponse
 from app.api.v1.schemas.users import UserUpdateResponse
 from app.db.crud.users import UsersCrud
 from app.services.base import BaseService
+from app.services.error_messages import ErrorMessages
 
 # Контекст для хеширования паролей с использованием bcrypt
 pwd_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
@@ -63,7 +64,7 @@ class UserService(BaseService):
         if await self.crud.email_exists(session, email):
             raise HTTPException(
                 status_code=HTTP_409_CONFLICT,
-                detail='Пользователь с таким email уже существует',
+                detail=ErrorMessages.USER_EMAIL_EXISTS.value,
             )
 
         # Хеширование пароля
@@ -82,7 +83,7 @@ class UserService(BaseService):
             # Защита от race condition
             raise HTTPException(
                 status_code=HTTP_409_CONFLICT,
-                detail='Пользователь с таким email уже существует',
+                detail=ErrorMessages.USER_EMAIL_EXISTS.value,
             ) from err
 
         return UserCreateResponse(
@@ -123,7 +124,7 @@ class UserService(BaseService):
         if user is None:
             raise HTTPException(
                 status_code=HTTP_404_NOT_FOUND,
-                detail='Пользователь не найден',
+                detail=ErrorMessages.USER_NOT_FOUND.value,
             )
 
         # Проверка уникальности email, если он предоставлен и отличается от текущего
@@ -134,7 +135,7 @@ class UserService(BaseService):
         ):
             raise HTTPException(
                 status_code=HTTP_400_BAD_REQUEST,
-                detail='Пользователь с таким email уже существует',
+                detail=ErrorMessages.USER_EMAIL_EXISTS.value,
             )
 
         # Подготовка словаря обновляемых полей
@@ -158,7 +159,7 @@ class UserService(BaseService):
         if updated_user is None:
             raise HTTPException(
                 status_code=HTTP_404_NOT_FOUND,
-                detail='Пользователь не найден',
+                detail=ErrorMessages.USER_NOT_FOUND.value,
             )
 
         return UserUpdateResponse(
