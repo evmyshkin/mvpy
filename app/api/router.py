@@ -15,6 +15,6 @@ main_router.include_router(
 # v1
 main_router.include_router(
     v1_router,
-    prefix='/v1',
+    prefix='/api/v1',
     tags=['v1'],
 )

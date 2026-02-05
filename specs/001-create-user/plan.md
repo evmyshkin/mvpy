@@ -12,7 +12,7 @@
 ## Technical Context
 
 **Language/Version**: Python 3.13 (обязательно по конституции)
-**Primary Dependencies**: FastAPI, SQLAlchemy 2.0+, Pydantic V2, Alembic, AsyncPG
+**Primary Dependencies**: FastAPI, SQLAlchemy 2.0+, Pydantic V2, Alembic, AsyncPG, bcrypt==4.0.1, passlib[bcrypt]
 **Storage**: PostgreSQL 17 (AsyncPG driver)
 **Testing**: pytest, pytest-asyncio, pytest-cov, Faker
 **Target Platform**: Linux server (Docker)
@@ -22,7 +22,7 @@
 - Обязательная асинхронность (SQLAlchemy 2.0+, AsyncPG)
 - Соблюдение чистой архитектуры: Controller → Service → CRUD → DB
 - Использование BaseCrud, BaseDBModel, BaseService
-- Хеширование паролей bcrypt/passlib
+- Хеширование паролей через passlib с bcrypt==4.0.1 (версия фиксирована для совместимости)
 **Scale/Scope**: один endpoint POST /api/v1/users/, 1 таблица users
 
 ## Constitution Check

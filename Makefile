@@ -12,7 +12,7 @@ down:
 
 # Test
 test:
-	pytest --cov=app --cov-branch --cov-report=term-missing
+	uv run pytest --cov=app --cov-branch --cov-report=term-missing
 
 # Lint
 lint:

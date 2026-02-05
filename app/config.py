@@ -4,8 +4,6 @@
 инициализации
 """
 
-from typing import Any
-
 from pydantic import BaseModel
 from pydantic import model_validator
 from pydantic_settings import BaseSettings
@@ -18,6 +16,7 @@ class AppConfig(BaseModel):
     host: str = '127.0.0.1'
     port: int = 8000
     environment: str = 'LOCAL'
+    test_api_base_url: str = 'http://test'
 
 
 class PostgresConfig(BaseModel):
@@ -31,20 +30,21 @@ class PostgresConfig(BaseModel):
     pool_size: int = 40
     overflow_pool_size: int = 40
 
-    @model_validator(mode='before')
-    @classmethod
-    def database_uri_validator(cls, data: Any) -> Any:
-        """Собираем PG-URI."""
-        sqlalchemy_db_uri = URL.create(
-            drivername='postgresql+asyncpg',
-            username=data.get('user'),
-            password=data.get('password'),
-            host=data.get('host'),
-            port=data.get('port', 5432),
-            database=data.get('db', ''),
-        )
-        data['database_uri'] = sqlalchemy_db_uri
-        return data
+    @model_validator(mode='after')
+    def build_database_uri(self) -> 'PostgresConfig':
+        """Собираем PG-URI из компонентов."""
+        if not self.database_uri:
+            sqlalchemy_db_uri = URL.create(
+                drivername='postgresql+asyncpg',
+                username=self.user,
+                password=self.password,
+                host=self.host,
+                port=self.port,
+                database=self.db,
+            )
+            self.database_uri = str(sqlalchemy_db_uri)
+            self.test_database_uri = str(sqlalchemy_db_uri)
+        return self
 
 
 class ImageHubConfig(BaseModel):

@@ -12,8 +12,9 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from app.api.utils.enums.env_enum import EnvEnum
 from app.config import config as app_config
 
-# Импортируем Base, чтобы зарегистрировать все модели
+# Импортируем Base и все модели, чтобы зарегистрировать их в metadata
 from app.db.base import BaseDBModel
+from app.db.models import User  # noqa: F401
 
 sqlalchemy_url = (
     app_config.postgres.test_database_uri + '/test_migrations'

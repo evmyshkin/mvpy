@@ -23,8 +23,8 @@
 
 ### Tasks
 
-- [ ] T001 Добавить зависимость passlib[bcrypt] в pyproject.toml
-- [ ] T002 Запустить uv sync для установки новых зависимостей
+- [x] T001 Добавить зависимость passlib[bcrypt] в pyproject.toml
+- [x] T002 Запустить uv sync для установки новых зависимостей
 
 ---
 
@@ -35,10 +35,10 @@
 
 ### Tasks
 
-- [ ] T003 Создать SQLAlchemy модель User в app/db/models/user.py с полями: id, email (unique), first_name, last_name, password_hash, created_at, updated_at
-- [ ] T004 Добавить импорт User в app/db/models/__init__.py для обнаружения Alembic
-- [ ] T005 Создать Alembic миграцию для таблицы users с уникальным constraint на email
-- [ ] T006 Применить миграцию к БД: alembic upgrade head
+- [x] T003 Создать SQLAlchemy модель User в app/db/models/user.py с полями: id, email (unique), first_name, last_name, password_hash, created_at, updated_at
+- [x] T004 Добавить импорт User в app/db/models/__init__.py для обнаружения Alembic
+- [x] T005 Создать Alembic миграцию для таблицы users с уникальным constraint на email
+- [x] T006 Применить миграцию к БД: alembic upgrade head
 
 ---
 
@@ -99,14 +99,14 @@
 ### Tasks
 
 #### Pydantic Validators
-- [ ] T023 [P] [US2] Добавить field_validator для first_name и last_name в UserCreateRequest с regex `^[А-Яа-яA-Za-z\-]+$` и проверкой длины до 100 символов
-- [ ] T024 [P] [US2] Добавить field_validator для password length в UserCreateRequest (минимум 8, максимум 100 символов)
-- [ ] T025 [P] [US2] Добавить field_validator для password complexity в UserCreateRequest (минимум 1 заглавная, 1 строчная, 1 цифра)
+- [x] T023 [P] [US2] Добавить field_validator для first_name и last_name в UserCreateRequest с regex `^[А-Яа-яA-Za-z\-]+$` и проверкой длины до 100 символов
+- [x] T024 [P] [US2] Добавить field_validator для password length в UserCreateRequest (минимум 8, максимум 100 символов)
+- [x] T025 [P] [US2] Добавить field_validator для password complexity в UserCreateRequest (минимум 1 заглавная, 1 строчная, 1 цифра)
 
 #### Tests
-- [ ] T026 [P] [US2] Добавить тесты для валидации имени/фамилии в test_users.py (цифры, спецсимволы, длина)
-- [ ] T027 [P] [US2] Добавить тесты для валидации пароля в test_users.py (длина, отсутствие заглавных/строчных/цифр)
-- [ ] T028 [US2] Запустить make test и убедиться что все тесты проходят
+- [x] T026 [P] [US2] Добавить тесты для валидации имени/фамилии в test_users.py (цифры, спецсимволы, длина)
+- [x] T027 [P] [US2] Добавить тесты для валидации пароля в test_users.py (длина, отсутствие заглавных/строчных/цифр)
+- [x] T028 [US2] Запустить make test и убедиться что все тесты проходят
 
 ---
 
@@ -117,12 +117,12 @@
 
 ### Tasks
 
-- [ ] T029 Запустить pre-commit run --all-files и исправить все ошибки
-- [ ] T030 Запустить ruff format app/ tests/ для форматирования кода
-- [ ] T031 Запустить mypy app/ для проверки типов
-- [ ] T032 Добавить Google-style docstrings на русском во все публичные классы и методы
-- [ ] T033 Проверить автогенерируемую документацию на http://localhost:8000/docs
-- [ ] T034 Убедиться что покрытие кода тестами соответствует требованиям (--cov-branch)
+- [x] T029 Запустить pre-commit run --all-files и исправить все ошибки
+- [x] T030 Запустить ruff format app/ tests/ для форматирования кода
+- [x] T031 Запустить mypy app/ для проверки типов
+- [x] T032 Добавить Google-style docstrings на русском во все публичные классы и методы
+- [x] T033 Проверить автогенерируемую документацию на http://localhost:8000/docs
+- [x] T034 Убедиться что покрытие кода тестами соответствует требованиям (--cov-branch)
 
 ---
 
