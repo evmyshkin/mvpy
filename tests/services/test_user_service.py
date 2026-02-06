@@ -35,6 +35,7 @@ async def test_create_user_duplicate_email(
         first_name='Пётр',
         last_name='Петров',
         password='Password456',
+        repeat_password='Password456',
     )
 
     with pytest.raises(HTTPException) as exc_info:
@@ -56,6 +57,7 @@ async def test_update_user_success(
         first_name='Пётр',
         last_name='Петров',
         password='NewPassword456',
+        repeat_password='NewPassword456',
     )
 
     updated_user = await user_service.update_user(
@@ -126,6 +128,7 @@ async def test_update_user_duplicate_email(
         first_name='Сергей',
         last_name='Сергеев',
         password='Password789',
+        repeat_password='Password789',
     )
     second_user = await user_service.create_user(session=db_session, user_data=second_user_request)
 
@@ -175,7 +178,7 @@ async def test_update_user_password_hashed(
 ) -> None:
     """Тест того, что пароль захеширован при обновлении."""
     new_password = 'NewPassword456'
-    update_request = UserUpdateRequest(password=new_password)
+    update_request = UserUpdateRequest(password=new_password, repeat_password=new_password)
 
     await user_service.update_user(
         session=db_session,
@@ -425,6 +428,7 @@ async def test_get_all_users_success(
         first_name='Пётр',
         last_name='Петров',
         password='Password123',
+        repeat_password='Password123',
     )
     user2 = await user_service.create_user(session=db_session, user_data=user2_request)
 
@@ -486,6 +490,7 @@ async def test_get_all_users_excludes_deactivated(
         first_name='Пётр',
         last_name='Петров',
         password='Password123',
+        repeat_password='Password123',
     )
     user2 = await user_service.create_user(session=db_session, user_data=user2_request)
 

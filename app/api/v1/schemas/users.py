@@ -5,6 +5,7 @@ import re
 from pydantic import BaseModel
 from pydantic import EmailStr
 from pydantic import field_validator
+from pydantic import model_validator
 
 
 def validate_name_field(value: str | None) -> str | None:
@@ -89,6 +90,7 @@ class UserCreateRequest(BaseModel):
     first_name: str
     last_name: str
     password: str
+    repeat_password: str
 
     @field_validator('first_name', 'last_name')
     @classmethod
@@ -140,6 +142,20 @@ class UserCreateRequest(BaseModel):
         """
         return validate_password_complexity(v)
 
+    @model_validator(mode='after')
+    def validate_passwords_match(self) -> 'UserCreateRequest':
+        """Валидация совпадения паролей.
+
+        Returns:
+            Валидированный экземпляр схемы
+
+        Raises:
+            ValueError: Если пароли не совпадают
+        """
+        if self.password != self.repeat_password:
+            raise ValueError('Пароли не совпадают')
+        return self
+
 
 class UserCreateResponse(BaseModel):
     """Схема ответа при создании пользователя."""
@@ -158,6 +174,7 @@ class UserUpdateRequest(BaseModel):
     first_name: str | None = None
     last_name: str | None = None
     password: str | None = None
+    repeat_password: str | None = None
 
     @field_validator('first_name', 'last_name')
     @classmethod
@@ -208,6 +225,28 @@ class UserUpdateRequest(BaseModel):
                 строчную букву или цифру
         """
         return validate_password_complexity(v)
+
+    @model_validator(mode='after')
+    def validate_passwords_match(self) -> 'UserUpdateRequest':
+        """Валидация совпадения паролей при обновлении.
+
+        Если указан password, то также должен быть указан repeat_password,
+        и они должны совпадать.
+
+        Returns:
+            Валидированный экземпляр схемы
+
+        Raises:
+            ValueError: Если указан только один из паролей или они не совпадают
+        """
+        if self.password is not None and self.repeat_password is None:
+            raise ValueError('Необходимо подтвердить пароль (repeat_password)')
+        if self.repeat_password is not None and self.password is None:
+            raise ValueError('Необходимо указать пароль (password)')
+        if self.password is not None and self.repeat_password is not None:
+            if self.password != self.repeat_password:
+                raise ValueError('Пароли не совпадают')
+        return self
 
 
 class UserUpdateResponse(BaseModel):

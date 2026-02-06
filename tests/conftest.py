@@ -148,6 +148,7 @@ def valid_user_request(faker: Faker) -> UserCreateRequest:
         first_name='Иван',
         last_name='Иванов',
         password='Password123',
+        repeat_password='Password123',
     )
 
 
@@ -179,6 +180,7 @@ def update_user_request(faker: Faker) -> UserUpdateRequest:
         first_name='Пётр',
         last_name='Петров',
         password='NewPassword456',
+        repeat_password='NewPassword456',
     )
 
 
@@ -200,6 +202,7 @@ async def existing_user(db_session: AsyncSession, faker: Faker) -> UserCreateRes
         first_name='Иван',
         last_name='Иванов',
         password='Password123',
+        repeat_password='Password123',
     )
 
     user = await service.create_user(session=db_session, user_data=user_request)

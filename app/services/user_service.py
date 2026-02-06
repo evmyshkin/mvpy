@@ -68,6 +68,7 @@ class UserService(BaseService):
         user_dict = user_data.model_dump()
         user_dict['password_hash'] = hash_password(user_data.password)
         del user_dict['password']
+        del user_dict['repeat_password']
 
         # Создание пользователя
         try:
@@ -129,7 +130,12 @@ class UserService(BaseService):
         # Подготовка данных для обновления через model_dump
         # exclude_unset=True исключает неустановленные поля
         # exclude_none=True дополнительно исключает поля с None значениями
-        values = user_data.model_dump(exclude_unset=True, exclude_none=True)
+        # exclude={'repeat_password'} исключает поле подтверждения пароля
+        values = user_data.model_dump(
+            exclude_unset=True,
+            exclude_none=True,
+            exclude={'repeat_password'},
+        )
 
         # Преобразуем password в password_hash если пароль предоставлен
         if 'password' in values and values['password'] is not None:

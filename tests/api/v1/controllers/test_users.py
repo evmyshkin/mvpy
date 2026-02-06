@@ -126,6 +126,7 @@ async def test_create_user_first_name_with_digits_fails(
             'first_name': 'Иван1',
             'last_name': 'Иванов',
             'password': 'Password123',
+            'repeat_password': 'Password123',
         },
     )
 
@@ -152,6 +153,7 @@ async def test_create_user_last_name_with_special_chars_fails(
             'first_name': 'Иван',
             'last_name': 'Иванов_Петров',
             'password': 'Password123',
+            'repeat_password': 'Password123',
         },
     )
 
@@ -178,6 +180,7 @@ async def test_create_user_first_name_too_long_fails(
             'first_name': 'А' * 101,
             'last_name': 'Иванов',
             'password': 'Password123',
+            'repeat_password': 'Password123',
         },
     )
 
@@ -204,6 +207,7 @@ async def test_create_user_name_with_hyphen_succeeds(
             'first_name': 'Мария-Изабелла',
             'last_name': 'Салтыков-Щедрин',
             'password': 'Password123',
+            'repeat_password': 'Password123',
         },
     )
 
@@ -229,6 +233,7 @@ async def test_create_user_password_too_short_fails(
             'first_name': 'Иван',
             'last_name': 'Иванов',
             'password': 'Pass1',
+            'repeat_password': 'Pass1',
         },
     )
 
@@ -255,6 +260,7 @@ async def test_create_user_password_no_uppercase_fails(
             'first_name': 'Иван',
             'last_name': 'Иванов',
             'password': 'password123',
+            'repeat_password': 'password123',
         },
     )
 
@@ -281,6 +287,7 @@ async def test_create_user_password_no_lowercase_fails(
             'first_name': 'Иван',
             'last_name': 'Иванов',
             'password': 'PASSWORD123',
+            'repeat_password': 'PASSWORD123',
         },
     )
 
@@ -307,6 +314,7 @@ async def test_create_user_password_no_digit_fails(
             'first_name': 'Иван',
             'last_name': 'Иванов',
             'password': 'Password',
+            'repeat_password': 'Password',
         },
     )
 
@@ -333,6 +341,7 @@ async def test_create_user_password_too_long_fails(
             'first_name': 'Иван',
             'last_name': 'Иванов',
             'password': 'Password123' * 10,
+            'repeat_password': 'Password123' * 10,
         },
     )
 
@@ -363,6 +372,7 @@ async def test_update_user_success(
         first_name='Пётр',
         last_name='Петров',
         password='NewPassword456',
+        repeat_password='NewPassword456',
     )
     update_response = await async_client.put(
         f'/api/v1/users/{user_id}',
@@ -443,6 +453,7 @@ async def test_update_user_duplicate_email(
         first_name='Мария',
         last_name='Сидорова',
         password='Password123',
+        repeat_password='Password123',
     )
     response2 = await async_client.post(
         '/api/v1/users/',
@@ -730,6 +741,7 @@ async def test_get_all_users_success(
         first_name='Пётр',
         last_name='Петров',
         password='Password123',
+        repeat_password='Password123',
     )
     await async_client.post('/api/v1/users/', json=user2_request.model_dump())
 
@@ -822,6 +834,7 @@ async def test_get_user_by_id_vs_all_users(
         first_name='Пётр',
         last_name='Петров',
         password='Password123',
+        repeat_password='Password123',
     )
     response2 = await async_client.post('/api/v1/users/', json=user2_request.model_dump())
     assert response2.status_code == 201
@@ -873,6 +886,7 @@ async def test_get_all_users_excludes_deactivated(
         first_name='Пётр',
         last_name='Петров',
         password='Password123',
+        repeat_password='Password123',
     )
     response2 = await async_client.post('/api/v1/users/', json=user2_request.model_dump())
     assert response2.status_code == 201
@@ -892,3 +906,155 @@ async def test_get_all_users_excludes_deactivated(
     assert len(data) == 1
     assert data[0]['email'] == user2_email
     assert data[0]['is_active'] is True
+
+
+# Тесты для проверки совпадения паролей
+@pytest.mark.asyncio
+async def test_create_user_passwords_do_not_match(
+    async_client: AsyncClient,
+    faker,
+) -> None:
+    """Тест несовпадения паролей при создании пользователя (422)."""
+    response = await async_client.post(
+        '/api/v1/users/',
+        json={
+            'email': faker.email(),
+            'first_name': 'Иван',
+            'last_name': 'Иванов',
+            'password': 'Password123',
+            'repeat_password': 'DifferentPassword123',
+        },
+    )
+
+    assert response.status_code == 422
+    errors = response.json()['detail']
+    assert any('repeat_password' in str(err) or 'Пароли не совпадают' in str(err) for err in errors)
+
+
+@pytest.mark.asyncio
+async def test_create_user_missing_repeat_password(
+    async_client: AsyncClient,
+    faker,
+) -> None:
+    """Тест отсутствия repeat_password при создании пользователя (422)."""
+    response = await async_client.post(
+        '/api/v1/users/',
+        json={
+            'email': faker.email(),
+            'first_name': 'Иван',
+            'last_name': 'Иванов',
+            'password': 'Password123',
+        },
+    )
+
+    assert response.status_code == 422
+    errors = response.json()['detail']
+    assert any('repeat_password' in str(err) for err in errors)
+
+
+@pytest.mark.asyncio
+async def test_update_user_passwords_do_not_match(
+    async_client: AsyncClient,
+    valid_user_request: UserCreateRequest,
+) -> None:
+    """Тест несовпадения паролей при обновлении пользователя (422)."""
+    # Arrange - создаём пользователя
+    create_response = await async_client.post(
+        '/api/v1/users/',
+        json=valid_user_request.model_dump(),
+    )
+    user_id = create_response.json()['id']
+
+    # Act - пытаемся обновить с несовпадающими паролями
+    response = await async_client.put(
+        f'/api/v1/users/{user_id}',
+        json={
+            'password': 'NewPassword456',
+            'repeat_password': 'DifferentPassword456',
+        },
+    )
+
+    # Assert - должна быть ошибка валидации
+    assert response.status_code == 422
+    errors = response.json()['detail']
+    assert any('repeat_password' in str(err) or 'Пароли не совпадают' in str(err) for err in errors)
+
+
+@pytest.mark.asyncio
+async def test_update_user_password_without_repeat(
+    async_client: AsyncClient,
+    valid_user_request: UserCreateRequest,
+) -> None:
+    """Тест указания password без repeat_password при обновлении (422)."""
+    # Arrange - создаём пользователя
+    create_response = await async_client.post(
+        '/api/v1/users/',
+        json=valid_user_request.model_dump(),
+    )
+    user_id = create_response.json()['id']
+
+    # Act - указываем только password без repeat_password
+    response = await async_client.put(
+        f'/api/v1/users/{user_id}',
+        json={'password': 'NewPassword456'},
+    )
+
+    # Assert - должна быть ошибка валидации
+    assert response.status_code == 422
+    errors = response.json()['detail']
+    assert any('repeat_password' in str(err) or 'Необходимо подтвердить пароль' in str(err) for err in errors)
+
+
+@pytest.mark.asyncio
+async def test_update_user_repeat_password_without_password(
+    async_client: AsyncClient,
+    valid_user_request: UserCreateRequest,
+) -> None:
+    """Тест указания repeat_password без password при обновлении (422)."""
+    # Arrange - создаём пользователя
+    create_response = await async_client.post(
+        '/api/v1/users/',
+        json=valid_user_request.model_dump(),
+    )
+    user_id = create_response.json()['id']
+
+    # Act - указываем только repeat_password без password
+    response = await async_client.put(
+        f'/api/v1/users/{user_id}',
+        json={'repeat_password': 'NewPassword456'},
+    )
+
+    # Assert - должна быть ошибка валидации
+    assert response.status_code == 422
+    errors = response.json()['detail']
+    assert any('password' in str(err) or 'Необходимо указать пароль' in str(err) for err in errors)
+
+
+@pytest.mark.asyncio
+async def test_update_user_with_matching_passwords(
+    async_client: AsyncClient,
+    valid_user_request: UserCreateRequest,
+) -> None:
+    """Тест успешного обновления пароля при совпадающих паролях (200)."""
+    # Arrange - создаём пользователя
+    create_response = await async_client.post(
+        '/api/v1/users/',
+        json=valid_user_request.model_dump(),
+    )
+    user_id = create_response.json()['id']
+
+    # Act - обновляем с совпадающими паролями
+    response = await async_client.put(
+        f'/api/v1/users/{user_id}',
+        json={
+            'password': 'NewPassword456',
+            'repeat_password': 'NewPassword456',
+        },
+    )
+
+    # Assert - обновление должно пройти успешно
+    assert response.status_code == 200
+    data = response.json()
+    assert data['id'] == user_id
+    assert 'password' not in data
+    assert 'password_hash' not in data
