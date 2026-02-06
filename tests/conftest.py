@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import NullPool
 
 from app.api.v1.schemas.users import UserCreateRequest
+from app.api.v1.schemas.users import UserCreateResponse
 from app.api.v1.schemas.users import UserUpdateRequest
 from app.config import config
 from app.db.base import BaseDBModel
@@ -177,4 +178,34 @@ def update_user_request(faker: Faker) -> UserUpdateRequest:
         first_name='Пётр',
         last_name='Петров',
         password='NewPassword456',
+    )
+
+
+@pytest_asyncio.fixture
+async def existing_user(db_session: AsyncSession, faker: Faker) -> UserCreateResponse:
+    """Создать существующего пользователя в БД для тестов обновления.
+
+    Args:
+        db_session: Тестовая сессия БД
+        faker: Генератор тестовых данных
+
+    Returns:
+        Созданный пользователь (UserCreateResponse)
+    """
+    service = UserService()
+
+    user_request = UserCreateRequest(
+        email=faker.email(),
+        first_name='Иван',
+        last_name='Иванов',
+        password='Password123',
+    )
+
+    user = await service.create_user(session=db_session, user_data=user_request)
+
+    return UserCreateResponse(
+        id=user.id,
+        email=user.email,
+        first_name=user.first_name,
+        last_name=user.last_name,
     )

@@ -96,10 +96,12 @@
   - Использовать Pydantic модели для создания тестовых данных
 
 - [X] T011 [P] [US1] Создать тесты для UserService в `tests/services/test_user_service.py`
-  - ПРИМЕЧАНИЕ: Сервисные тесты не созданы из-за проблем с asyncpg connection pooling
-  - API тесты в T012 обеспечивают полное покрытие функционала обновления пользователя
-  - API тесты проверяют весь стек: Controller → Service → CRUD → DB
-  - Покрытие кода userService обеспечивается через API тесты
+  - `test_update_user_success()` - успешное обновление всех полей
+  - `test_update_user_partial()` - частичное обновление одного поля
+  - `test_update_user_not_found()` - несуществующий user_id (404)
+  - `test_update_user_duplicate_email()` - duplicate email (400)
+  - `test_update_user_same_email()` - обновление с тем же email (успех)
+  - `test_update_user_password_hashed()` - проверка хеширования пароля
 
 - [X] T012 [P] [US1] Создать тесты для API endpoint в `tests/api/v1/controllers/test_users.py`
   - `test_update_user_success()` - успешное обновление (200)

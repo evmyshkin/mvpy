@@ -29,13 +29,7 @@ async def create_user(
     Returns:
         Данные созданного пользователя
     """
-    return await user_service.create_user(
-        session=db,
-        email=user_data.email,
-        first_name=user_data.first_name,
-        last_name=user_data.last_name,
-        password=user_data.password,
-    )
+    return await user_service.create_user(session=db, user_data=user_data)
 
 
 @router.put('/{user_id}', response_model=UserUpdateResponse, status_code=200)
@@ -54,11 +48,4 @@ async def update_user(
     Returns:
         Данные обновлённого пользователя
     """
-    return await user_service.update_user(
-        session=db,
-        user_id=user_id,
-        email=user_data.email,
-        first_name=user_data.first_name,
-        last_name=user_data.last_name,
-        password=user_data.password,
-    )
+    return await user_service.update_user(session=db, user_id=user_id, user_data=user_data)
