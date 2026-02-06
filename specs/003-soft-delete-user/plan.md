@@ -151,8 +151,8 @@ migrations/versions/
 ## API Contracts
 
 **Новый эндпоинт**:
-- `DELETE /api/v1/users/{email}` - деактивация пользователя по email
-  - Request: без тела (email в path)
+- `DELETE /api/v1/users/{user_id}` - деактивация пользователя по ID
+  - Request: без тела (user_id в path)
   - Response: 204 No Content (пустое тело)
   - Errors: 404 Not Found (пользователь не существует или уже деактивирован)
 

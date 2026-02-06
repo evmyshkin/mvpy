@@ -148,6 +148,7 @@ class UserCreateResponse(BaseModel):
     email: str
     first_name: str
     last_name: str
+    is_active: bool
 
 
 class UserUpdateRequest(BaseModel):
@@ -216,3 +217,4 @@ class UserUpdateResponse(BaseModel):
     email: str
     first_name: str
     last_name: str
+    is_active: bool

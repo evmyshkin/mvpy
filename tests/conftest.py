@@ -204,12 +204,7 @@ async def existing_user(db_session: AsyncSession, faker: Faker) -> UserCreateRes
 
     user = await service.create_user(session=db_session, user_data=user_request)
 
-    return UserCreateResponse(
-        id=user.id,
-        email=user.email,
-        first_name=user.first_name,
-        last_name=user.last_name,
-    )
+    return user  # UserCreateResponse уже содержит все поля включая is_active
 
 
 @pytest.fixture

@@ -84,6 +84,7 @@ class UserService(BaseService):
             email=user.email,
             first_name=user.first_name,
             last_name=user.last_name,
+            is_active=user.is_active,
         )
 
     async def update_user(
@@ -152,32 +153,71 @@ class UserService(BaseService):
             email=updated_user.email,
             first_name=updated_user.first_name,
             last_name=updated_user.last_name,
+            is_active=updated_user.is_active,
         )
 
     async def deactivate_user(
         self,
         session: AsyncSession,
-        email: str,
+        user_id: int,
     ) -> None:
-        """Деактивировать пользователя по email.
+        """Деактивировать пользователя по ID.
 
         Args:
             session: Асинхронная сессия БД
-            email: Email пользователя для деактивации
+            user_id: ID пользователя для деактивации
 
         Raises:
-            HTTPException: Если пользователь не найден или уже деактивирован (404)
+            HTTPException: Если пользователь не найден (404)
+            HTTPException: Если пользователь уже деактивирован (404)
         """
         # Проверяем что пользователь существует и активен
-        user = await self.crud.find_by_email(session, email)
-        if user is None:
+        user = await self.crud.find_one_or_none(session, id=user_id)
+        if user is None or not user.is_active:
             raise HTTPException(
                 status_code=HTTP_404_NOT_FOUND,
                 detail=ErrorMessages.USER_NOT_FOUND.value,
             )
 
         # Деактивируем пользователя
-        await self.crud.deactivate_by_email(session, email)
+        await self.crud.update_one_or_none(
+            session,
+            filter_by={'id': user_id},
+            values={'is_active': False},
+        )
+
+    async def get_user_by_id(
+        self,
+        session: AsyncSession,
+        user_id: int,
+    ) -> UserUpdateResponse:
+        """Найти пользователя по ID.
+
+        Args:
+            session: Асинхронная сессия БД
+            user_id: ID пользователя для поиска
+
+        Returns:
+            Схема найденного пользователя
+
+        Raises:
+            HTTPException: Если пользователь с указанным ID не найден (404)
+        """
+        user = await self.crud.find_one_or_none(session, id=user_id)
+
+        if user is None:
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND,
+                detail=ErrorMessages.USER_NOT_FOUND.value,
+            )
+
+        return UserUpdateResponse(
+            id=user.id,
+            email=user.email,
+            first_name=user.first_name,
+            last_name=user.last_name,
+            is_active=user.is_active,
+        )
 
     async def search_user_by_email(
         self,
@@ -209,6 +249,7 @@ class UserService(BaseService):
             email=user.email,
             first_name=user.first_name,
             last_name=user.last_name,
+            is_active=user.is_active,
         )
 
     async def get_all_users(
@@ -231,6 +272,7 @@ class UserService(BaseService):
                 email=user.email,
                 first_name=user.first_name,
                 last_name=user.last_name,
+                is_active=user.is_active,
             )
             for user in users
         ]

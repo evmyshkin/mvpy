@@ -6,11 +6,9 @@
 
 ## Endpoints
 
-### GET /api/v1/users/
+### GET /api/v1/users/{user_id}
 
-Поиск пользователей в системе. Поддерживает два режима:
-1. Поиск конкретного пользователя по email (если указан параметр `email`)
-2. Получение списка всех пользователей (если параметр `email` не указан)
+Получение информации о конкретном пользователе по ID.
 
 ---
 
@@ -18,13 +16,13 @@
 
 **Method**: `GET`
 
-**Path**: `/api/v1/users/`
+**Path**: `/api/v1/users/{user_id}`
 
-**Query Parameters**:
+**Path Parameters**:
 
-| Параметр | Тип | Обязательный | По умолчанию | Описание |
-|----------|-----|--------------|--------------|----------|
-| `email` | string (email) | Нет | `null` | Email пользователя для поиска. Поиск выполняется без учета регистра. |
+| Параметр | Тип | Обязательный | Описание |
+|----------|-----|--------------|----------|
+| `user_id` | integer | Да | Уникальный идентификатор пользователя |
 
 **Headers**:
 ```
@@ -36,11 +34,11 @@ Content-Type: application/json
 **Примеры запросов**:
 
 ```bash
-# Поиск пользователя по email
-GET /api/v1/users/?email=test@example.com
+# Получение пользователя по ID
+GET /api/v1/users/1
 
-# Получение всех пользователей
-GET /api/v1/users/
+# Получение пользователя с ID=42
+GET /api/v1/users/42
 ```
 
 ---
@@ -48,8 +46,6 @@ GET /api/v1/users/
 #### Response
 
 **Success Response** (код `200 OK`)
-
-**Сценарий 1**: Пользователь найден по email
 
 **Content-Type**: `application/json`
 
@@ -63,7 +59,145 @@ GET /api/v1/users/
 }
 ```
 
-**Сценарий 2**: Возвращен список всех пользователей
+---
+
+#### Error Responses
+
+**Ошибка 1**: Пользователь не найден
+
+**Код**: `404 Not Found`
+
+**Content-Type**: `application/json`
+
+**Body**:
+```json
+{
+  "detail": "Пользователь не найден"
+}
+```
+
+**Пример**: Запрос `GET /api/v1/users/99999` когда пользователь не существует
+
+---
+
+**Ошибка 2**: Невалидный формат ID
+
+**Код**: `422 Unprocessable Entity`
+
+**Content-Type**: `application/json`
+
+**Body**:
+```json
+{
+  "detail": [
+    {
+      "type": "int_parsing",
+      "msg": "Input should be a valid integer",
+      "loc": ["path", "user_id"],
+      "input": "abc"
+    }
+  ]
+}
+```
+
+**Пример**: Запрос `GET /api/v1/users/abc` (строка вместо числа)
+
+---
+
+#### Сценарии использования
+
+**1. Администратор получает пользователя по ID**
+
+**Request**:
+```http
+GET /api/v1/users/1 HTTP/1.1
+Host: api.example.com
+```
+
+**Response** (200 OK):
+```json
+{
+  "id": 1,
+  "email": "admin@example.com",
+  "first_name": "Админ",
+  "last_name": "Администратор"
+}
+```
+
+---
+
+**2. Администратор ищет несуществующего пользователя**
+
+**Request**:
+```http
+GET /api/v1/users/99999 HTTP/1.1
+Host: api.example.com
+```
+
+**Response** (404 Not Found):
+```json
+{
+  "detail": "Пользователь не найден"
+}
+```
+
+---
+
+**3. Администратор передает невалидный ID**
+
+**Request**:
+```http
+GET /api/v1/users/abc HTTP/1.1
+Host: api.example.com
+```
+
+**Response** (422 Unprocessable Entity):
+```json
+{
+  "detail": [
+    {
+      "type": "int_parsing",
+      "msg": "Input should be a valid integer",
+      "loc": ["path", "user_id"],
+      "input": "abc"
+    }
+  ]
+}
+```
+
+---
+
+## GET /api/v1/users/
+
+Получение списка всех пользователей.
+
+---
+
+#### Request
+
+**Method**: `GET`
+
+**Path**: `/api/v1/users/`
+
+**Headers**:
+```
+Content-Type: application/json
+```
+
+**Request Body**: Нет
+
+**Примеры запросов**:
+
+```bash
+# Получение всех пользователей
+GET /api/v1/users/
+```
+
+---
+
+#### Response
+
+**Success Response** (код `200 OK`)
 
 **Content-Type**: `application/json`
 
@@ -81,174 +215,13 @@ GET /api/v1/users/
     "email": "user2@example.com",
     "first_name": "Петр",
     "last_name": "Петров"
-  },
-  {
-    "id": 3,
-    "email": "user3@example.com",
-    "first_name": "Сидор",
-    "last_name": "Сидоров"
   }
 ]
 ```
 
-**Сценарий 3**: Пустой список пользователей
-
-**Content-Type**: `application/json`
-
-**Body**: `[]`
-
----
-
-#### Error Responses
-
-**Ошибка 1**: Пользователь не найден
-
-**Код**: `404 Not Found`
-
-**Content-Type**: `application/json`
-
-**Body**:
+**Пустой список**:
 ```json
-{
-  "detail": "Пользователь с указанным email не найден"
-}
-```
-
-**Пример**: Запрос `GET /api/v1/users/?email=notfound@example.com` когда пользователь не существует
-
----
-
-**Ошибка 2**: Невалидный формат email
-
-**Код**: `422 Unprocessable Entity`
-
-**Content-Type**: `application/json`
-
-**Body**:
-```json
-{
-  "detail": [
-    {
-      "type": "email_type",
-      "msg": "value is not a valid email address",
-      "loc": ["query", "email"],
-      "input": "invalid-email"
-    }
-  ]
-}
-```
-
-**Пример**: Запрос `GET /api/v1/users/?email=invalid-email` (без @, домена и т.д.)
-
----
-
-#### Сценарии использования
-
-**1. Администратор ищет конкретного пользователя**
-
-**Request**:
-```http
-GET /api/v1/users/?email=admin@example.com HTTP/1.1
-Host: api.example.com
-```
-
-**Response** (200 OK):
-```json
-{
-  "id": 1,
-  "email": "admin@example.com",
-  "first_name": "Админ",
-  "last_name": "Администратор"
-}
-```
-
----
-
-**2. Администратор получает список всех пользователей**
-
-**Request**:
-```http
-GET /api/v1/users/ HTTP/1.1
-Host: api.example.com
-```
-
-**Response** (200 OK):
-```json
-[
-  {
-    "id": 1,
-    "email": "admin@example.com",
-    "first_name": "Админ",
-    "last_name": "Администратор"
-  },
-  {
-    "id": 2,
-    "email": "user@example.com",
-    "first_name": "Иван",
-    "last_name": "Иванов"
-  }
-]
-```
-
----
-
-**3. Администратор ищет пользователя по email (без учета регистра)**
-
-**Request**:
-```http
-GET /api/v1/users/?email=Test@Example.COM HTTP/1.1
-Host: api.example.com
-```
-
-**Response** (200 OK):
-```json
-{
-  "id": 1,
-  "email": "test@example.com",
-  "first_name": "Тест",
-  "last_name": "Тестов"
-}
-```
-
----
-
-**4. Администратор ищет несуществующего пользователя**
-
-**Request**:
-```http
-GET /api/v1/users/?email=notfound@example.com HTTP/1.1
-Host: api.example.com
-```
-
-**Response** (404 Not Found):
-```json
-{
-  "detail": "Пользователь с указанным email не найден"
-}
-```
-
----
-
-**5. Администратор передает невалидный email**
-
-**Request**:
-```http
-GET /api/v1/users/?email=not-an-email HTTP/1.1
-Host: api.example.com
-```
-
-**Response** (422 Unprocessable Entity):
-```json
-{
-  "detail": [
-    {
-      "type": "email_type",
-      "msg": "value is not a valid email address",
-      "loc": ["query", "email"],
-      "input": "not-an-email"
-    }
-  ]
-}
+[]
 ```
 
 ---
@@ -258,14 +231,14 @@ Host: api.example.com
 ### Обязательства API
 
 ✅ **Поведение**:
-- Возвращает `200 OK` для успешного поиска
-- Возвращает `404 Not Found` если пользователь с указанным email не найден
-- Возвращает `422 Unprocessable Entity` при невалидном формате email
-- Поиск по email выполняется без учета регистра
+- Возвращает `200 OK` для успешного поиска пользователя по ID
+- Возвращает `200 OK` для списка всех пользователей (включая пустой список)
+- Возвращает `404 Not Found` если пользователь с указанным ID не найден
+- Возвращает `422 Unprocessable Entity` при невалидном формате ID
 - Никогда не возвращает поле `password_hash` в ответе
 
 ✅ **Производительность**:
-- Поиск по email: < 1 секунда
+- Поиск по ID: < 1 секунды
 - Получение списка до 10,000 пользователей: < 2 секунды
 
 ✅ **Формат данных**:
@@ -279,7 +252,7 @@ Host: api.example.com
 ### Обязательства клиента
 
 ✅ **Валидация**:
-- Клиент должен передавать валидный email в параметре `email`
+- Клиент должен передавать валидный integer ID в path параметре
 - Клиент должен обрабатывать все статус коды (200, 404, 422)
 
 ✅ **Обработка пустого списка**:
@@ -289,34 +262,33 @@ Host: api.example.com
 
 Автоматически генерируется FastAPI. Доступна на `/docs` или `/openapi.json` при запущенном сервере.
 
-**Краткое описание endpoint**:
+**Краткое описание endpoints**:
 ```yaml
-/users/:
+/users/{user_id}:
   get:
-    summary: Поиск пользователей
-    description: Поиск пользователя по email или получение списка всех пользователей
+    summary: Получить пользователя по ID
+    description: Получение информации о конкретном пользователе
     parameters:
-      - name: email
-        in: query
-        required: false
+      - name: user_id
+        in: path
+        required: true
         schema:
-          type: string
-          format: email
+          type: integer
     responses:
       '200':
-        description: Успешный поиск
-        content:
-          application/json:
-            schema:
-              oneOf:
-                - $ref: '#/components/schemas/UserSearchResponse'
-                - type: array
-                  items:
-                    $ref: '#/components/schemas/UserSearchResponse'
+        description: Пользователь найден
       '404':
         description: Пользователь не найден
       '422':
-        description: Невалидный формат email
+        description: Невалидный формат ID
+
+/users/:
+  get:
+    summary: Получить список всех пользователей
+    description: Получение списка всех зарегистрированных пользователей
+    responses:
+      '200':
+        description: Список пользователей (может быть пустым)
 ```
 
 ## Схемы данных (Schemas)

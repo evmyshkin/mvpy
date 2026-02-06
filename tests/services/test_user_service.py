@@ -22,7 +22,12 @@ async def test_create_user_duplicate_email(
 ) -> None:
     """Тест создания пользователя с дубликатом email."""
     # Создаём первого пользователя
-    await user_service.create_user(session=db_session, user_data=valid_user_request)
+    created_user = await user_service.create_user(
+        session=db_session, user_data=valid_user_request
+    )
+
+    # Проверяем что is_active=True при создании
+    assert created_user.is_active is True
 
     # Пытаемся создать второго с тем же email
     duplicate_request = UserCreateRequest(
@@ -63,6 +68,7 @@ async def test_update_user_success(
     assert updated_user.email == 'newemail@example.com'
     assert updated_user.first_name == 'Пётр'
     assert updated_user.last_name == 'Петров'
+    assert updated_user.is_active is True
 
 
 @pytest.mark.asyncio
@@ -85,6 +91,7 @@ async def test_update_user_partial(
     # Другие поля не должны измениться
     assert updated_user.last_name == existing_user.last_name
     assert updated_user.email == existing_user.email
+    assert updated_user.is_active is True
 
 
 @pytest.mark.asyncio
@@ -157,6 +164,7 @@ async def test_update_user_same_email(
     assert updated_user.id == existing_user.id
     assert updated_user.email == existing_user.email
     assert updated_user.first_name == 'Пётр'
+    assert updated_user.is_active is True
 
 
 @pytest.mark.asyncio
@@ -209,20 +217,15 @@ async def test_deactivate_user_success(
     # Act - деактивируем пользователя
     await user_service.deactivate_user(
         session=db_session,
-        email=created_user.email,
+        user_id=created_user.id,
     )
 
     # Assert - проверяем что пользователь деактивирован
     from app.db.crud.users import UsersCrud
 
-    user_from_db = await UsersCrud().find_by_email(db_session, created_user.email)
-    assert user_from_db is None  # Пользователь не должен быть найден (is_active=False)
-
-    # Но пользователь должен существовать в БД (проверяем напрямую без фильтра is_active)
-    all_users = await UsersCrud().find_all(db_session)
-    deactivated_user = next((u for u in all_users if u.email == created_user.email), None)
-    assert deactivated_user is not None
-    assert deactivated_user.is_active is False
+    user_from_db = await UsersCrud().find_one_or_none(db_session, id=created_user.id)
+    assert user_from_db is not None
+    assert user_from_db.is_active is False
 
 
 @pytest.mark.asyncio
@@ -240,7 +243,7 @@ async def test_deactivate_user_not_found(
     with pytest.raises(HTTPException) as exc_info:
         await user_service.deactivate_user(
             session=db_session,
-            email='nonexistent@example.com',
+            user_id=99999,
         )
 
     assert exc_info.value.status_code == HTTP_404_NOT_FOUND
@@ -268,14 +271,71 @@ async def test_deactivate_user_already_deactivated(
 
     await user_service.deactivate_user(
         session=db_session,
-        email=created_user.email,
+        user_id=created_user.id,
     )
 
     # Act & Assert - вторая попытка деактивации должна вернуть 404
     with pytest.raises(HTTPException) as exc_info:
         await user_service.deactivate_user(
             session=db_session,
-            email=created_user.email,
+            user_id=created_user.id,
+        )
+
+    assert exc_info.value.status_code == HTTP_404_NOT_FOUND
+    assert exc_info.value.detail == ErrorMessages.USER_NOT_FOUND.value
+
+
+# Тесты для получения пользователя по ID
+@pytest.mark.asyncio
+async def test_get_user_by_id_success(
+    db_session,
+    user_service: UserService,
+    valid_user_request: UserCreateRequest,
+) -> None:
+    """Тест успешного получения пользователя по ID.
+
+    Args:
+        db_session: Сессия базы данных
+        user_service: Сервис пользователей
+        valid_user_request: Валидный запрос на создание пользователя
+    """
+    # Arrange - создаём пользователя
+    created_user = await user_service.create_user(
+        session=db_session,
+        user_data=valid_user_request,
+    )
+
+    # Act - получаем пользователя по ID
+    found_user = await user_service.get_user_by_id(
+        session=db_session,
+        user_id=created_user.id,
+    )
+
+    # Assert - проверяем что пользователь найден
+    assert found_user is not None
+    assert found_user.id == created_user.id
+    assert found_user.email == created_user.email
+    assert found_user.first_name == created_user.first_name
+    assert found_user.last_name == created_user.last_name
+    assert found_user.is_active is True
+
+
+@pytest.mark.asyncio
+async def test_get_user_by_id_not_found(
+    db_session,
+    user_service: UserService,
+) -> None:
+    """Тест получения несуществующего пользователя.
+
+    Args:
+        db_session: Сессия базы данных
+        user_service: Сервис пользователей
+    """
+    # Act & Assert - пытаемся получить несуществующего пользователя
+    with pytest.raises(HTTPException) as exc_info:
+        await user_service.get_user_by_id(
+            session=db_session,
+            user_id=99999,
         )
 
     assert exc_info.value.status_code == HTTP_404_NOT_FOUND
@@ -313,6 +373,7 @@ async def test_search_user_by_email_success(
     assert found_user.email == created_user.email
     assert found_user.first_name == created_user.first_name
     assert found_user.last_name == created_user.last_name
+    assert found_user.is_active is True
 
 
 @pytest.mark.asyncio
@@ -374,8 +435,10 @@ async def test_get_all_users_success(
     assert len(all_users) == 2
     assert all_users[0].id == user1.id
     assert all_users[0].email == user1.email
+    assert all_users[0].is_active is True
     assert all_users[1].id == user2.id
     assert all_users[1].email == user2.email
+    assert all_users[1].is_active is True
 
 
 @pytest.mark.asyncio
@@ -395,3 +458,45 @@ async def test_get_all_users_empty(
     # Assert - должен вернуться пустой список
     assert len(all_users) == 0
     assert all_users == []
+
+
+@pytest.mark.asyncio
+async def test_get_all_users_excludes_deactivated(
+    db_session,
+    user_service: UserService,
+    valid_user_request: UserCreateRequest,
+    faker,
+) -> None:
+    """Тест того, что деактивированные пользователи исключаются из списка.
+
+    Args:
+        db_session: Сессия базы данных
+        user_service: Сервис пользователей
+        valid_user_request: Валидный запрос на создание пользователя
+        faker: Генератор тестовых данных
+    """
+    # Arrange - создаём двух пользователей
+    user1 = await user_service.create_user(
+        session=db_session,
+        user_data=valid_user_request,
+    )
+
+    user2_request = UserCreateRequest(
+        email=faker.email(),
+        first_name='Пётр',
+        last_name='Петров',
+        password='Password123',
+    )
+    user2 = await user_service.create_user(session=db_session, user_data=user2_request)
+
+    # Деактивируем первого пользователя
+    await user_service.deactivate_user(session=db_session, user_id=user1.id)
+
+    # Act - получаем список всех пользователей
+    all_users = await user_service.get_all_users(session=db_session)
+
+    # Assert - должен вернуться только второй пользователь
+    assert len(all_users) == 1
+    assert all_users[0].id == user2.id
+    assert all_users[0].email == user2.email
+    assert all_users[0].is_active is True

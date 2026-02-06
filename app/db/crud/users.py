@@ -66,15 +66,17 @@ class UsersCrud(BaseCrud[User]):
         return result.scalars().first()
 
     async def find_all_users(self, session: AsyncSession) -> list[User]:
-        """Получить список всех пользователей.
+        """Получить список всех активных пользователей.
+
+        Деактивированные пользователи (is_active=False) исключаются из списка.
 
         Args:
             session: Асинхронная сессия БД
 
         Returns:
-            Список всех объектов User
+            Список активных объектов User
         """
-        stmt = select(User)
+        stmt = select(User).where(User.is_active)
         result = await session.execute(stmt)
         return list(result.scalars().all())
 

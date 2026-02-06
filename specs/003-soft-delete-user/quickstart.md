@@ -162,17 +162,17 @@ async def find_by_email(self, session: AsyncSession, email: str) -> User | None:
     return result.scalars().first()
 
 
-async def deactivate_by_email(self, session: AsyncSession, email: str) -> User | None:
-    """Деактивировать пользователя по email.
+async def deactivate_by_id(self, session: AsyncSession, user_id: int) -> User | None:
+    """Деактивировать пользователя по ID.
 
     Args:
         session: Асинхронная сессия БД
-        email: Email пользователя для деактивации
+        user_id: ID пользователя для деактивации
 
     Returns:
         Объект User с is_active=False или None если не найден
     """
-    stmt = select(User).where(User.email == email)
+    stmt = select(User).where(User.id == user_id)
     result = await session.execute(stmt)
     user = result.scalars().first()
 
@@ -207,25 +207,29 @@ class UserService(BaseService):
     async def deactivate_user(
         self,
         session: AsyncSession,
-        email: str,
+        user_id: int,
     ) -> None:
-        """Деактивировать пользователя по email.
+        """Деактивировать пользователя по ID.
 
         Args:
             session: Асинхронная сессия БД
-            email: Email пользователя для деактивации
+            user_id: ID пользователя для деактивации
 
         Raises:
             HTTPException(404): Если пользователь не найден или уже деактивирован
         """
-        user = await self.crud.find_by_email(session, email)
-        if user is None:
+        user = await self.crud.find_one_or_none(session, id=user_id)
+        if user is None or not user.is_active:
             raise HTTPException(
                 status_code=HTTP_404_NOT_FOUND,
                 detail=ErrorMessages.USER_NOT_FOUND.value,
             )
 
-        await self.crud.deactivate_by_email(session, email)
+        await self.crud.update_one_or_none(
+            session,
+            filter_by={'id': user_id},
+            values={'is_active': False},
+        )
 ```
 
 ---
@@ -247,15 +251,15 @@ user_service = UserService()
 # ... существующие эндпоинты (POST, PATCH, GET)
 
 
-@router.delete("/{email}")
+@router.delete("/{user_id}")
 async def deactivate_user(
-    email: str,
+    user_id: int,
     session: AsyncSession = Depends(connector.get_session),
 ) -> None:
-    """Деактивировать пользователя по email.
+    """Деактивировать пользователя по ID.
 
     Args:
-        email: Email пользователя для деактивации
+        user_id: ID пользователя для деактивации
         session: Асинхронная сессия БД
 
     Returns:
@@ -263,9 +267,8 @@ async def deactivate_user(
 
     Raises:
         HTTPException(404): Если пользователь не найден или уже деактивирован
-        HTTPException(400): Если email имеет некорректный формат
     """
-    await user_service.deactivate_user(session=session, email=email)
+    await user_service.deactivate_user(session=session, user_id=user_id)
     return Response(status_code=HTTP_204_NO_CONTENT)
 ```
 
@@ -278,7 +281,7 @@ async def deactivate_user(
 #### Успешная деактивация
 
 ```bash
-curl -X DELETE http://localhost:8000/api/v1/users/user@example.com \
+curl -X DELETE http://localhost:8000/api/v1/users/1 \
   -H "Content-Type: application/json"
 
 # Ожидаемый ответ: 204 No Content (пустое тело)
@@ -287,7 +290,7 @@ curl -X DELETE http://localhost:8000/api/v1/users/user@example.com \
 #### Пользователь не найден
 
 ```bash
-curl -X DELETE http://localhost:8000/api/v1/users/nonexistent@example.com
+curl -X DELETE http://localhost:8000/api/v1/users/99999
 
 # Ожидаемый ответ:
 # {
@@ -300,11 +303,11 @@ curl -X DELETE http://localhost:8000/api/v1/users/nonexistent@example.com
 
 ```bash
 # Первая деактивация
-curl -X DELETE http://localhost:8000/api/v1/users/user@example.com
+curl -X DELETE http://localhost:8000/api/v1/users/1
 # Ответ: 204 No Content
 
 # Повторная деактивация
-curl -X DELETE http://localhost:8000/api/v1/users/user@example.com
+curl -X DELETE http://localhost:8000/api/v1/users/1
 # Ответ: 404 Not Found (пользователь уже деактивирован)
 ```
 
@@ -380,9 +383,9 @@ curl -X POST http://localhost:8000/api/v1/users/ \
   }'
 
 # Деактивировать пользователя
-curl -X DELETE http://localhost:8000/api/v1/users/test@example.com
+curl -X DELETE http://localhost:8000/api/v1/users/1
 
-# Попытаться найти пользователя (вернёт 404)
+# Попытаться найти пользователя (вернёт 404 если не существует)
 curl http://localhost:8000/api/v1/users/1
 ```
 

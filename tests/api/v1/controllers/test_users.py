@@ -35,6 +35,7 @@ async def test_create_user_success(
     assert data['email'] == valid_user_request.email
     assert data['first_name'] == valid_user_request.first_name
     assert data['last_name'] == valid_user_request.last_name
+    assert data['is_active'] is True
 
     # Проверяем что пароль не возвращается
     assert 'password' not in data
@@ -102,6 +103,7 @@ async def test_create_user_password_not_exposed(
     assert data['email'] == valid_user_request.email
     assert data['first_name'] == valid_user_request.first_name
     assert data['last_name'] == valid_user_request.last_name
+    assert data['is_active'] is True
     assert 'id' in data
 
 
@@ -373,6 +375,7 @@ async def test_update_user_success(
     assert data['id'] == user_id
     assert data['first_name'] == 'Пётр'
     assert data['last_name'] == 'Петров'
+    assert data['is_active'] is True
     assert 'password' not in data
     assert 'password_hash' not in data
 
@@ -559,7 +562,7 @@ async def test_update_user_all_errors(
     assert 'password' in error_fields or any('password' in str(err).lower() for err in errors)
 
 
-# Тесты для деактивации пользователя (DELETE /api/v1/users/{email})
+# Тесты для деактивации пользователя (DELETE /api/v1/users/{user_id})
 @pytest.mark.asyncio
 async def test_deactivate_user_success(
     async_client: AsyncClient,
@@ -577,10 +580,10 @@ async def test_deactivate_user_success(
         json=valid_user_request.model_dump(),
     )
     assert create_response.status_code == 201
-    user_email = create_response.json()['email']
+    user_id = create_response.json()['id']
 
     # Act - деактивируем пользователя
-    delete_response = await async_client.delete(f'/api/v1/users/{user_email}')
+    delete_response = await async_client.delete(f'/api/v1/users/{user_id}')
 
     # Assert - проверяем статус 204 No Content
     assert delete_response.status_code == 204
@@ -597,7 +600,7 @@ async def test_deactivate_user_not_found(
         async_client: Асинхронный HTTP клиент
     """
     # Act - пытаемся деактивировать несуществующего пользователя
-    response = await async_client.delete('/api/v1/users/nonexistent@example.com')
+    response = await async_client.delete('/api/v1/users/99999')
 
     # Assert - должен вернуть 404
     assert response.status_code == 404
@@ -621,27 +624,27 @@ async def test_deactivate_user_already_deactivated(
         json=valid_user_request.model_dump(),
     )
     assert create_response.status_code == 201
-    user_email = create_response.json()['email']
+    user_id = create_response.json()['id']
 
     # Первая деактивация
-    delete_response1 = await async_client.delete(f'/api/v1/users/{user_email}')
+    delete_response1 = await async_client.delete(f'/api/v1/users/{user_id}')
     assert delete_response1.status_code == 204
 
     # Act - вторая попытка деактивации
-    delete_response2 = await async_client.delete(f'/api/v1/users/{user_email}')
+    delete_response2 = await async_client.delete(f'/api/v1/users/{user_id}')
 
     # Assert - должен вернуть 404 как для несуществующего пользователя
     assert delete_response2.status_code == 404
     assert delete_response2.json()['detail'] == ErrorMessages.USER_NOT_FOUND.value
 
 
-# Тесты для поиска пользователя по email (GET /api/v1/users/?email=...)
+# Тесты для получения пользователя по ID (GET /api/v1/users/{user_id})
 @pytest.mark.asyncio
-async def test_search_user_by_email_success(
+async def test_get_user_by_id_success(
     async_client: AsyncClient,
     valid_user_request: UserCreateRequest,
 ) -> None:
-    """Тест успешного поиска пользователя по email.
+    """Тест успешного получения пользователя по ID.
 
     Args:
         async_client: Асинхронный HTTP клиент
@@ -655,18 +658,17 @@ async def test_search_user_by_email_success(
     assert create_response.status_code == 201
     created_user = create_response.json()
 
-    # Act - ищем пользователя по email
-    search_response = await async_client.get(
-        f'/api/v1/users/?email={valid_user_request.email}',
-    )
+    # Act - получаем пользователя по ID
+    get_response = await async_client.get(f'/api/v1/users/{created_user["id"]}')
 
     # Assert - проверяем статус и данные ответа
-    assert search_response.status_code == 200
-    data = search_response.json()
+    assert get_response.status_code == 200
+    data = get_response.json()
     assert data['id'] == created_user['id']
     assert data['email'] == valid_user_request.email
     assert data['first_name'] == valid_user_request.first_name
     assert data['last_name'] == valid_user_request.last_name
+    assert data['is_active'] is True
 
     # Проверяем что пароль не возвращается
     assert 'password' not in data
@@ -674,63 +676,33 @@ async def test_search_user_by_email_success(
 
 
 @pytest.mark.asyncio
-async def test_search_user_by_email_case_insensitive(
-    async_client: AsyncClient,
-    valid_user_request: UserCreateRequest,
-) -> None:
-    """Тест поиска пользователя по email без учета регистра.
-
-    Args:
-        async_client: Асинхронный HTTP клиент
-        valid_user_request: Валидный запрос на создание пользователя
-    """
-    # Arrange - создаём пользователя с lowercase email
-    create_response = await async_client.post(
-        '/api/v1/users/',
-        json=valid_user_request.model_dump(),
-    )
-    assert create_response.status_code == 201
-
-    # Act - ищем с uppercase email
-    uppercase_email = valid_user_request.email.upper()
-    search_response = await async_client.get(
-        f'/api/v1/users/?email={uppercase_email}',
-    )
-
-    # Assert - пользователь должен быть найден
-    assert search_response.status_code == 200
-    data = search_response.json()
-    assert data['email'] == valid_user_request.email
-
-
-@pytest.mark.asyncio
-async def test_search_user_by_email_not_found(
+async def test_get_user_by_id_not_found(
     async_client: AsyncClient,
 ) -> None:
-    """Тест поиска несуществующего пользователя.
+    """Тест получения несуществующего пользователя.
 
     Args:
         async_client: Асинхронный HTTP клиент
     """
-    # Act - ищем несуществующего пользователя
-    response = await async_client.get('/api/v1/users/?email=notfound@example.com')
+    # Act - получаем несуществующего пользователя
+    response = await async_client.get('/api/v1/users/99999')
 
     # Assert - должен вернуть 404 с русским сообщением
     assert response.status_code == 404
-    assert response.json()['detail'] == 'Пользователь с указанным email не найден'
+    assert response.json()['detail'] == 'Пользователь не найден'
 
 
 @pytest.mark.asyncio
-async def test_search_user_by_email_invalid_format(
+async def test_get_user_by_id_invalid_format(
     async_client: AsyncClient,
 ) -> None:
-    """Тест поиска с невалидным форматом email.
+    """Тест получения с невалидным форматом ID.
 
     Args:
         async_client: Асинхронный HTTP клиент
     """
-    # Act - отправляем запрос с невалидным email (без @)
-    response = await async_client.get('/api/v1/users/?email=invalid-email')
+    # Act - отправляем запрос с невалидным ID (строка вместо числа)
+    response = await async_client.get('/api/v1/users/abc')
 
     # Assert - должен вернуть 422 (ошибка валидации)
     assert response.status_code == 422
@@ -775,6 +747,8 @@ async def test_get_all_users_success(
     assert 'email' in data[0]
     assert 'first_name' in data[0]
     assert 'last_name' in data[0]
+    assert 'is_active' in data[0]
+    assert data[0]['is_active'] is True
     # Проверяем что пароль не возвращается
     assert 'password' not in data[0]
     assert 'password_hash' not in data[0]
@@ -823,12 +797,12 @@ async def test_get_all_users_password_not_exposed(
 
 
 @pytest.mark.asyncio
-async def test_search_user_by_email_vs_all_users(
+async def test_get_user_by_id_vs_all_users(
     async_client: AsyncClient,
     valid_user_request: UserCreateRequest,
     faker,
 ) -> None:
-    """Тест различия между поиском по email и списком всех пользователей.
+    """Тест различия между получением по ID и списком всех пользователей.
 
     Args:
         async_client: Асинхронный HTTP клиент
@@ -841,7 +815,7 @@ async def test_search_user_by_email_vs_all_users(
         json=valid_user_request.model_dump(),
     )
     assert response1.status_code == 201
-    user1_email = response1.json()['email']
+    user1_id = response1.json()['id']
 
     user2_request = UserCreateRequest(
         email=faker.email(),
@@ -852,22 +826,69 @@ async def test_search_user_by_email_vs_all_users(
     response2 = await async_client.post('/api/v1/users/', json=user2_request.model_dump())
     assert response2.status_code == 201
 
-    # Act 1 - ищем по email (должен вернуть одного пользователя)
-    search_response = await async_client.get(f'/api/v1/users/?email={user1_email}')
+    # Act 1 - получаем по ID (должен вернуть одного пользователя)
+    get_response = await async_client.get(f'/api/v1/users/{user1_id}')
 
     # Act 2 - получаем всех пользователей (должен вернуть список)
     all_response = await async_client.get('/api/v1/users/')
 
     # Assert - результаты должны различаться
-    assert search_response.status_code == 200
-    search_data = search_response.json()
-    assert isinstance(search_data, dict)
-    assert search_data['email'] == user1_email
+    assert get_response.status_code == 200
+    get_data = get_response.json()
+    assert isinstance(get_data, dict)
+    assert get_data['id'] == user1_id
 
     assert all_response.status_code == 200
     all_data = all_response.json()
     assert isinstance(all_data, list)
     assert len(all_data) == 2
-    # При поиске по email возвращается dict, при получении всех - list
-    assert isinstance(search_data, dict)
+    # При получении по ID возвращается dict, при получении всех - list
+    assert isinstance(get_data, dict)
     assert isinstance(all_data, list)
+
+
+@pytest.mark.asyncio
+async def test_get_all_users_excludes_deactivated(
+    async_client: AsyncClient,
+    valid_user_request: UserCreateRequest,
+    faker,
+) -> None:
+    """Тест того, что деактивированные пользователи исключаются из списка.
+
+    Args:
+        async_client: Асинхронный HTTP клиент
+        valid_user_request: Валидный запрос на создание пользователя
+        faker: Генератор тестовых данных
+    """
+    # Arrange - создаём двух пользователей
+    response1 = await async_client.post(
+        '/api/v1/users/',
+        json=valid_user_request.model_dump(),
+    )
+    assert response1.status_code == 201
+    user1_id = response1.json()['id']
+
+    user2_request = UserCreateRequest(
+        email=faker.email(),
+        first_name='Пётр',
+        last_name='Петров',
+        password='Password123',
+    )
+    response2 = await async_client.post('/api/v1/users/', json=user2_request.model_dump())
+    assert response2.status_code == 201
+    user2_email = response2.json()['email']
+
+    # Деактивируем первого пользователя
+    delete_response = await async_client.delete(f'/api/v1/users/{user1_id}')
+    assert delete_response.status_code == 204
+
+    # Act - получаем список всех пользователей
+    all_response = await async_client.get('/api/v1/users/')
+
+    # Assert - должен вернуться только второй пользователь
+    assert all_response.status_code == 200
+    data = all_response.json()
+    assert isinstance(data, list)
+    assert len(data) == 1
+    assert data[0]['email'] == user2_email
+    assert data[0]['is_active'] is True
