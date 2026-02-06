@@ -1,6 +1,10 @@
 """Fixtures для тестирования."""
 
 from collections.abc import AsyncGenerator
+from datetime import UTC
+from datetime import datetime
+from datetime import timedelta
+from uuid import uuid4
 
 import pytest
 import pytest_asyncio
@@ -8,6 +12,7 @@ import pytest_asyncio
 from faker import Faker
 from httpx import ASGITransport
 from httpx import AsyncClient
+from jose import jwt
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.asyncio import async_sessionmaker
@@ -133,6 +138,45 @@ async def async_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient]:
     app.dependency_overrides.clear()
 
 
+@pytest_asyncio.fixture
+async def auth_headers(async_client: AsyncClient, faker: Faker) -> dict[str, str]:
+    """Создать заголовки авторизации для тестирования защищённых эндпоинтов.
+
+    Args:
+        async_client: HTTP клиент
+        faker: Генератор тестовых данных
+
+    Returns:
+        Словарь с заголовком Authorization (Bearer токен)
+    """
+    # Создаём уникального пользователя для каждого теста
+    user_request = UserCreateRequest(
+        email=faker.email(),
+        first_name='Auth',
+        last_name='User',
+        password='Password123',
+        repeat_password='Password123',
+    )
+    await async_client.post(
+        '/api/v1/users/',
+        json=user_request.model_dump(),
+    )
+
+    # Логинимся и получаем токен
+    from app.api.v1.schemas.auth import AuthRequest
+
+    login_response = await async_client.post(
+        '/api/v1/auth/login',
+        json=AuthRequest(
+            email=user_request.email,
+            password=user_request.password,
+        ).model_dump(),
+    )
+
+    token = login_response.json()['access_token']
+    return {'Authorization': f'Bearer {token}'}
+
+
 @pytest.fixture
 def valid_user_request(faker: Faker) -> UserCreateRequest:
     """Валидный запрос на создание пользователя.
@@ -226,3 +270,86 @@ def valid_user_response(faker: Faker) -> UserUpdateResponse:
         first_name='Иван',
         last_name='Иванов',
     )
+
+
+# JWT Helper Functions для тестов
+
+
+def create_test_jwt_token(
+    user_id: int,
+    is_active: bool = True,
+    expires_delta: timedelta | None = None,
+) -> str:
+    """Создать тестовый JWT токен.
+
+    Args:
+        user_id: ID пользователя
+        is_active: Активен ли пользователь
+        expires_delta: Время жизни токена (опционально)
+
+    Returns:
+        JWT токен в виде строки
+    """
+    now = datetime.now(UTC)
+    expire = now + (expires_delta or timedelta(minutes=config.jwt.access_token_expire_minutes))
+
+    payload = {
+        'sub': str(user_id),
+        'user_id': user_id,
+        'is_active': is_active,
+        'iat': now,
+        'exp': expire,
+        'jti': str(uuid4()),
+    }
+
+    encoded_jwt = jwt.encode(payload, config.jwt.secret_key, algorithm=config.jwt.algorithm)
+    return encoded_jwt
+
+
+def decode_test_jwt_token(token: str) -> dict:
+    """Декодировать тестовый JWT токен.
+
+    Args:
+        token: JWT токен
+
+    Returns:
+        Декодированный payload токена
+    """
+    return jwt.decode(token, config.jwt.secret_key, algorithms=[config.jwt.algorithm])
+
+
+# Auth Fixtures
+
+
+@pytest.fixture
+def valid_auth_token() -> str:
+    """Валидный JWT токен для активного пользователя.
+
+    Returns:
+        JWT токен
+    """
+    return create_test_jwt_token(user_id=1, is_active=True)
+
+
+@pytest.fixture
+def expired_auth_token() -> str:
+    """Истёкший JWT токен.
+
+    Returns:
+        Истёкший JWT токен
+    """
+    return create_test_jwt_token(
+        user_id=1,
+        is_active=True,
+        expires_delta=timedelta(minutes=-60),  # Истёк 60 минут назад
+    )
+
+
+@pytest.fixture
+def inactive_user_token() -> str:
+    """JWT токен для неактивного пользователя.
+
+    Returns:
+        JWT токен с is_active=False
+    """
+    return create_test_jwt_token(user_id=2, is_active=False)

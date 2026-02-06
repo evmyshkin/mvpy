@@ -243,9 +243,12 @@ class UserUpdateRequest(BaseModel):
             raise ValueError('Необходимо подтвердить пароль (repeat_password)')
         if self.repeat_password is not None and self.password is None:
             raise ValueError('Необходимо указать пароль (password)')
-        if self.password is not None and self.repeat_password is not None:
-            if self.password != self.repeat_password:
-                raise ValueError('Пароли не совпадают')
+        if (
+            self.password is not None
+            and self.repeat_password is not None
+            and self.password != self.repeat_password
+        ):
+            raise ValueError('Пароли не совпадают')
         return self
 
 

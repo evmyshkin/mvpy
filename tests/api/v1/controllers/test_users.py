@@ -356,6 +356,7 @@ async def test_update_user_success(
     async_client: AsyncClient,
     valid_user_request: UserCreateRequest,
     faker,
+    auth_headers: dict[str, str],
 ) -> None:
     """Успешное обновление всех полей пользователя (200)."""
     # Arrange - создаём пользователя
@@ -377,6 +378,7 @@ async def test_update_user_success(
     update_response = await async_client.put(
         f'/api/v1/users/{user_id}',
         json=update_request.model_dump(),
+        headers=auth_headers,
     )
 
     # Assert
@@ -394,6 +396,7 @@ async def test_update_user_success(
 async def test_update_user_partial(
     async_client: AsyncClient,
     valid_user_request: UserCreateRequest,
+    auth_headers: dict[str, str],
 ) -> None:
     """Частичное обновление одного поля (200)."""
     # Arrange
@@ -409,6 +412,7 @@ async def test_update_user_partial(
     update_response = await async_client.put(
         f'/api/v1/users/{user_id}',
         json=update_request.model_dump(),
+        headers=auth_headers,
     )
 
     # Assert
@@ -422,12 +426,14 @@ async def test_update_user_partial(
 @pytest.mark.asyncio
 async def test_update_user_not_found(
     async_client: AsyncClient,
+    auth_headers: dict[str, str],
 ) -> None:
     """Несуществующий user_id (404)."""
     update_request = UserUpdateRequest(first_name='Пётр')
     response = await async_client.put(
         '/api/v1/users/99999',
         json=update_request.model_dump(),
+        headers=auth_headers,
     )
 
     assert response.status_code == 404
@@ -439,6 +445,7 @@ async def test_update_user_duplicate_email(
     async_client: AsyncClient,
     valid_user_request: UserCreateRequest,
     faker,
+    auth_headers: dict[str, str],
 ) -> None:
     """Duplicate email (400)."""
     # Arrange - создаём двух пользователей
@@ -466,6 +473,7 @@ async def test_update_user_duplicate_email(
     update_response = await async_client.put(
         f'/api/v1/users/{user1_id}',
         json=update_request.model_dump(),
+        headers=auth_headers,
     )
 
     # Assert
@@ -477,6 +485,7 @@ async def test_update_user_duplicate_email(
 async def test_update_user_invalid_email(
     async_client: AsyncClient,
     valid_user_request: UserCreateRequest,
+    auth_headers: dict[str, str],
 ) -> None:
     """Невалидный формат email (422)."""
     create_response = await async_client.post(
@@ -490,6 +499,7 @@ async def test_update_user_invalid_email(
     response = await async_client.put(
         f'/api/v1/users/{user_id}',
         json={'email': 'invalid-email'},
+        headers=auth_headers,
     )
 
     assert response.status_code == 422
@@ -499,6 +509,7 @@ async def test_update_user_invalid_email(
 async def test_update_user_invalid_name(
     async_client: AsyncClient,
     valid_user_request: UserCreateRequest,
+    auth_headers: dict[str, str],
 ) -> None:
     """Имя с цифрами (422)."""
     create_response = await async_client.post(
@@ -511,6 +522,7 @@ async def test_update_user_invalid_name(
     response = await async_client.put(
         f'/api/v1/users/{user_id}',
         json={'first_name': 'Иван1'},
+        headers=auth_headers,
     )
 
     assert response.status_code == 422
@@ -522,6 +534,7 @@ async def test_update_user_invalid_name(
 async def test_update_user_weak_password(
     async_client: AsyncClient,
     valid_user_request: UserCreateRequest,
+    auth_headers: dict[str, str],
 ) -> None:
     """Слабый пароль (422)."""
     create_response = await async_client.post(
@@ -533,6 +546,7 @@ async def test_update_user_weak_password(
     response = await async_client.put(
         f'/api/v1/users/{user_id}',
         json={'password': 'weak'},
+        headers=auth_headers,
     )
 
     assert response.status_code == 422
@@ -544,6 +558,7 @@ async def test_update_user_weak_password(
 async def test_update_user_all_errors(
     async_client: AsyncClient,
     valid_user_request: UserCreateRequest,
+    auth_headers: dict[str, str],
 ) -> None:
     """Множественные ошибки валидации (422)."""
     create_response = await async_client.post(
@@ -560,6 +575,7 @@ async def test_update_user_all_errors(
             'last_name': 'Петров_Сидоров',
             'password': 'weak',
         },
+        headers=auth_headers,
     )
 
     assert response.status_code == 422
@@ -578,6 +594,7 @@ async def test_update_user_all_errors(
 async def test_deactivate_user_success(
     async_client: AsyncClient,
     valid_user_request: UserCreateRequest,
+    auth_headers: dict[str, str],
 ) -> None:
     """Тест успешной деактивации пользователя.
 
@@ -594,7 +611,10 @@ async def test_deactivate_user_success(
     user_id = create_response.json()['id']
 
     # Act - деактивируем пользователя
-    delete_response = await async_client.delete(f'/api/v1/users/{user_id}')
+    delete_response = await async_client.delete(
+        f'/api/v1/users/{user_id}',
+        headers=auth_headers,
+    )
 
     # Assert - проверяем статус 204 No Content
     assert delete_response.status_code == 204
@@ -604,6 +624,7 @@ async def test_deactivate_user_success(
 @pytest.mark.asyncio
 async def test_deactivate_user_not_found(
     async_client: AsyncClient,
+    auth_headers: dict[str, str],
 ) -> None:
     """Тест попытки деактивировать несуществующего пользователя.
 
@@ -611,7 +632,10 @@ async def test_deactivate_user_not_found(
         async_client: Асинхронный HTTP клиент
     """
     # Act - пытаемся деактивировать несуществующего пользователя
-    response = await async_client.delete('/api/v1/users/99999')
+    response = await async_client.delete(
+        '/api/v1/users/99999',
+        headers=auth_headers,
+    )
 
     # Assert - должен вернуть 404
     assert response.status_code == 404
@@ -622,6 +646,7 @@ async def test_deactivate_user_not_found(
 async def test_deactivate_user_already_deactivated(
     async_client: AsyncClient,
     valid_user_request: UserCreateRequest,
+    auth_headers: dict[str, str],
 ) -> None:
     """Тест попытки деактивировать уже деактивированного пользователя.
 
@@ -638,11 +663,17 @@ async def test_deactivate_user_already_deactivated(
     user_id = create_response.json()['id']
 
     # Первая деактивация
-    delete_response1 = await async_client.delete(f'/api/v1/users/{user_id}')
+    delete_response1 = await async_client.delete(
+        f'/api/v1/users/{user_id}',
+        headers=auth_headers,
+    )
     assert delete_response1.status_code == 204
 
     # Act - вторая попытка деактивации
-    delete_response2 = await async_client.delete(f'/api/v1/users/{user_id}')
+    delete_response2 = await async_client.delete(
+        f'/api/v1/users/{user_id}',
+        headers=auth_headers,
+    )
 
     # Assert - должен вернуть 404 как для несуществующего пользователя
     assert delete_response2.status_code == 404
@@ -654,6 +685,7 @@ async def test_deactivate_user_already_deactivated(
 async def test_get_user_by_id_success(
     async_client: AsyncClient,
     valid_user_request: UserCreateRequest,
+    auth_headers: dict[str, str],
 ) -> None:
     """Тест успешного получения пользователя по ID.
 
@@ -670,7 +702,10 @@ async def test_get_user_by_id_success(
     created_user = create_response.json()
 
     # Act - получаем пользователя по ID
-    get_response = await async_client.get(f'/api/v1/users/{created_user["id"]}')
+    get_response = await async_client.get(
+        f'/api/v1/users/{created_user["id"]}',
+        headers=auth_headers,
+    )
 
     # Assert - проверяем статус и данные ответа
     assert get_response.status_code == 200
@@ -689,6 +724,7 @@ async def test_get_user_by_id_success(
 @pytest.mark.asyncio
 async def test_get_user_by_id_not_found(
     async_client: AsyncClient,
+    auth_headers: dict[str, str],
 ) -> None:
     """Тест получения несуществующего пользователя.
 
@@ -696,7 +732,10 @@ async def test_get_user_by_id_not_found(
         async_client: Асинхронный HTTP клиент
     """
     # Act - получаем несуществующего пользователя
-    response = await async_client.get('/api/v1/users/99999')
+    response = await async_client.get(
+        '/api/v1/users/99999',
+        headers=auth_headers,
+    )
 
     # Assert - должен вернуть 404 с русским сообщением
     assert response.status_code == 404
@@ -706,6 +745,7 @@ async def test_get_user_by_id_not_found(
 @pytest.mark.asyncio
 async def test_get_user_by_id_invalid_format(
     async_client: AsyncClient,
+    auth_headers: dict[str, str],
 ) -> None:
     """Тест получения с невалидным форматом ID.
 
@@ -713,7 +753,10 @@ async def test_get_user_by_id_invalid_format(
         async_client: Асинхронный HTTP клиент
     """
     # Act - отправляем запрос с невалидным ID (строка вместо числа)
-    response = await async_client.get('/api/v1/users/abc')
+    response = await async_client.get(
+        '/api/v1/users/abc',
+        headers=auth_headers,
+    )
 
     # Assert - должен вернуть 422 (ошибка валидации)
     assert response.status_code == 422
@@ -725,6 +768,7 @@ async def test_get_all_users_success(
     async_client: AsyncClient,
     valid_user_request: UserCreateRequest,
     faker,
+    auth_headers: dict[str, str],
 ) -> None:
     """Тест успешного получения списка всех пользователей.
 
@@ -746,13 +790,17 @@ async def test_get_all_users_success(
     await async_client.post('/api/v1/users/', json=user2_request.model_dump())
 
     # Act - получаем список всех пользователей
-    response = await async_client.get('/api/v1/users/')
+    response = await async_client.get(
+        '/api/v1/users/',
+        headers=auth_headers,
+    )
 
     # Assert - проверяем статус и массив с пользователями
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)
-    assert len(data) == 2
+    # 3 пользователя: Auth User из auth_headers + 2 созданных в тесте
+    assert len(data) == 3
 
     # Проверяем структуру первого пользователя
     assert 'id' in data[0]
@@ -769,24 +817,34 @@ async def test_get_all_users_success(
 @pytest.mark.asyncio
 async def test_get_all_users_empty_list(
     async_client: AsyncClient,
+    auth_headers: dict[str, str],
 ) -> None:
-    """Тест получения пустого списка пользователей.
+    """Тест получения списка пользователей (только Auth User из auth_headers).
 
     Args:
         async_client: Асинхронный HTTP клиент
     """
-    # Act - получаем список пользователей (не создавая ни одного)
-    response = await async_client.get('/api/v1/users/')
+    # Act - получаем список пользователей (не создавая ни одного, кроме Auth User)
+    response = await async_client.get(
+        '/api/v1/users/',
+        headers=auth_headers,
+    )
 
-    # Assert - должен вернуть 200 с пустым массивом
+    # Assert - должен вернуть 200 с 1 пользователем (Auth User)
     assert response.status_code == 200
-    assert response.json() == []
+    data = response.json()
+    assert isinstance(data, list)
+    # Только Auth User из фикстуры auth_headers
+    assert len(data) == 1
+    assert data[0]['first_name'] == 'Auth'
+    assert data[0]['last_name'] == 'User'
 
 
 @pytest.mark.asyncio
 async def test_get_all_users_password_not_exposed(
     async_client: AsyncClient,
     valid_user_request: UserCreateRequest,
+    auth_headers: dict[str, str],
 ) -> None:
     """Тест что пароль не возвращается в списке пользователей.
 
@@ -798,12 +856,16 @@ async def test_get_all_users_password_not_exposed(
     await async_client.post('/api/v1/users/', json=valid_user_request.model_dump())
 
     # Act - получаем список всех пользователей
-    response = await async_client.get('/api/v1/users/')
+    response = await async_client.get(
+        '/api/v1/users/',
+        headers=auth_headers,
+    )
 
     # Assert - проверяем что password_hash отсутствует в ответе
     assert response.status_code == 200
     data = response.json()
-    assert len(data) == 1
+    # Auth User из auth_headers + 1 созданный в тесте
+    assert len(data) == 2
     assert 'password' not in data[0]
     assert 'password_hash' not in data[0]
 
@@ -813,6 +875,7 @@ async def test_get_user_by_id_vs_all_users(
     async_client: AsyncClient,
     valid_user_request: UserCreateRequest,
     faker,
+    auth_headers: dict[str, str],
 ) -> None:
     """Тест различия между получением по ID и списком всех пользователей.
 
@@ -840,10 +903,16 @@ async def test_get_user_by_id_vs_all_users(
     assert response2.status_code == 201
 
     # Act 1 - получаем по ID (должен вернуть одного пользователя)
-    get_response = await async_client.get(f'/api/v1/users/{user1_id}')
+    get_response = await async_client.get(
+        f'/api/v1/users/{user1_id}',
+        headers=auth_headers,
+    )
 
     # Act 2 - получаем всех пользователей (должен вернуть список)
-    all_response = await async_client.get('/api/v1/users/')
+    all_response = await async_client.get(
+        '/api/v1/users/',
+        headers=auth_headers,
+    )
 
     # Assert - результаты должны различаться
     assert get_response.status_code == 200
@@ -854,7 +923,8 @@ async def test_get_user_by_id_vs_all_users(
     assert all_response.status_code == 200
     all_data = all_response.json()
     assert isinstance(all_data, list)
-    assert len(all_data) == 2
+    # Auth User из auth_headers + 2 созданных в тесте
+    assert len(all_data) == 3
     # При получении по ID возвращается dict, при получении всех - list
     assert isinstance(get_data, dict)
     assert isinstance(all_data, list)
@@ -865,6 +935,7 @@ async def test_get_all_users_excludes_deactivated(
     async_client: AsyncClient,
     valid_user_request: UserCreateRequest,
     faker,
+    auth_headers: dict[str, str],
 ) -> None:
     """Тест того, что деактивированные пользователи исключаются из списка.
 
@@ -893,19 +964,30 @@ async def test_get_all_users_excludes_deactivated(
     user2_email = response2.json()['email']
 
     # Деактивируем первого пользователя
-    delete_response = await async_client.delete(f'/api/v1/users/{user1_id}')
+    delete_response = await async_client.delete(
+        f'/api/v1/users/{user1_id}',
+        headers=auth_headers,
+    )
     assert delete_response.status_code == 204
 
     # Act - получаем список всех пользователей
-    all_response = await async_client.get('/api/v1/users/')
+    all_response = await async_client.get(
+        '/api/v1/users/',
+        headers=auth_headers,
+    )
 
-    # Assert - должен вернуться только второй пользователь
+    # Assert - должен вернуться Auth User и второй пользователь (первый деактивирован)
     assert all_response.status_code == 200
     data = all_response.json()
     assert isinstance(data, list)
-    assert len(data) == 1
-    assert data[0]['email'] == user2_email
-    assert data[0]['is_active'] is True
+    # Auth User + user2 (user1 деактивирован)
+    assert len(data) == 2
+    # Проверяем что user2 присутствует
+    assert any(user['email'] == user2_email for user in data)
+    # Проверяем что Auth User присутствует
+    assert any(user['first_name'] == 'Auth' for user in data)
+    # Проверяем что все пользователи активны
+    assert all(user['is_active'] is True for user in data)
 
 
 # Тесты для проверки совпадения паролей
@@ -956,6 +1038,7 @@ async def test_create_user_missing_repeat_password(
 async def test_update_user_passwords_do_not_match(
     async_client: AsyncClient,
     valid_user_request: UserCreateRequest,
+    auth_headers: dict[str, str],
 ) -> None:
     """Тест несовпадения паролей при обновлении пользователя (422)."""
     # Arrange - создаём пользователя
@@ -972,6 +1055,7 @@ async def test_update_user_passwords_do_not_match(
             'password': 'NewPassword456',
             'repeat_password': 'DifferentPassword456',
         },
+        headers=auth_headers,
     )
 
     # Assert - должна быть ошибка валидации
@@ -984,6 +1068,7 @@ async def test_update_user_passwords_do_not_match(
 async def test_update_user_password_without_repeat(
     async_client: AsyncClient,
     valid_user_request: UserCreateRequest,
+    auth_headers: dict[str, str],
 ) -> None:
     """Тест указания password без repeat_password при обновлении (422)."""
     # Arrange - создаём пользователя
@@ -997,18 +1082,23 @@ async def test_update_user_password_without_repeat(
     response = await async_client.put(
         f'/api/v1/users/{user_id}',
         json={'password': 'NewPassword456'},
+        headers=auth_headers,
     )
 
     # Assert - должна быть ошибка валидации
     assert response.status_code == 422
     errors = response.json()['detail']
-    assert any('repeat_password' in str(err) or 'Необходимо подтвердить пароль' in str(err) for err in errors)
+    assert any(
+        'repeat_password' in str(err) or 'Необходимо подтвердить пароль' in str(err)
+        for err in errors
+    )
 
 
 @pytest.mark.asyncio
 async def test_update_user_repeat_password_without_password(
     async_client: AsyncClient,
     valid_user_request: UserCreateRequest,
+    auth_headers: dict[str, str],
 ) -> None:
     """Тест указания repeat_password без password при обновлении (422)."""
     # Arrange - создаём пользователя
@@ -1022,6 +1112,7 @@ async def test_update_user_repeat_password_without_password(
     response = await async_client.put(
         f'/api/v1/users/{user_id}',
         json={'repeat_password': 'NewPassword456'},
+        headers=auth_headers,
     )
 
     # Assert - должна быть ошибка валидации
@@ -1034,6 +1125,7 @@ async def test_update_user_repeat_password_without_password(
 async def test_update_user_with_matching_passwords(
     async_client: AsyncClient,
     valid_user_request: UserCreateRequest,
+    auth_headers: dict[str, str],
 ) -> None:
     """Тест успешного обновления пароля при совпадающих паролях (200)."""
     # Arrange - создаём пользователя
@@ -1050,6 +1142,7 @@ async def test_update_user_with_matching_passwords(
             'password': 'NewPassword456',
             'repeat_password': 'NewPassword456',
         },
+        headers=auth_headers,
     )
 
     # Assert - обновление должно пройти успешно

@@ -5,6 +5,7 @@
 """
 
 from pydantic import BaseModel
+from pydantic import Field
 from pydantic import model_validator
 from pydantic_settings import BaseSettings
 from pydantic_settings import SettingsConfigDict
@@ -52,6 +53,26 @@ class ImageHubConfig(BaseModel):
     repo: str = ''  # Название вашего репозитория
 
 
+class JWTConfig(BaseModel):
+    """Конфигурация JWT токенов."""
+
+    secret_key: str = Field(
+        default='default-secret-key-for-development-min-32-characters',
+        description='Секретный ключ для подписи JWT токенов',
+        min_length=32,
+    )
+    access_token_expire_minutes: int = Field(
+        default=60,
+        description='Время жизни токена в минутах',
+        ge=1,  # Минимум 1 минута
+        le=43200,  # Максимум 30 дней
+    )
+    algorithm: str = Field(
+        default='HS256',
+        description='Алгоритм подписи JWT',
+    )
+
+
 class Settings(BaseSettings):
     """Настройки приложения."""
 
@@ -65,6 +86,7 @@ class Settings(BaseSettings):
     app: AppConfig = AppConfig()
     postgres: PostgresConfig = PostgresConfig()
     image_hub: ImageHubConfig = ImageHubConfig()
+    jwt: JWTConfig = JWTConfig()
 
 
 config = Settings()

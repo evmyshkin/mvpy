@@ -22,9 +22,7 @@ async def test_create_user_duplicate_email(
 ) -> None:
     """Тест создания пользователя с дубликатом email."""
     # Создаём первого пользователя
-    created_user = await user_service.create_user(
-        session=db_session, user_data=valid_user_request
-    )
+    created_user = await user_service.create_user(session=db_session, user_data=valid_user_request)
 
     # Проверяем что is_active=True при создании
     assert created_user.is_active is True

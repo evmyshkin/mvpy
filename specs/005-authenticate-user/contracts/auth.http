@@ -1,0 +1,247 @@
+### API контракты: Аутентификация и авторизация
+
+**Дата**: 2025-02-06
+**Фича**: 005-authenticate-user
+**Базовый URL**: `http://localhost:8000/api/v1`
+
+---
+
+## 1. Аутентификация (Login)
+
+### POST /auth/login
+
+Аутентифицирует пользователя по email и паролю, возвращает JWT токен.
+
+**Запрос**:
+
+```http
+POST /api/v1/auth/login HTTP/1.1
+Host: localhost:8000
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "password": "Password123"
+}
+```
+
+**Успешный ответ** (200 OK):
+
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjMiLCJ1c2VyX2lkIjoxMjMsImlzX2FjdGl2ZSI6dHJ1ZSwiaWF0IjoxNzM2MTIzNDU2LCJleHAiOjE3MzYyMDk4NTYsImp0aSI6IjEyMzQ1Njc4LTEyMzQtMTIzNC0xMjM0LTEyMzQ1Njc4OTFiMiJ9.signature",
+  "token_type": "bearer",
+  "expires_in": 3600
+}
+```
+
+**Ошибки**:
+
+| Код | Описание | Ответ |
+|-----|----------|-------|
+| 401 | Неверный email или пароль | `{"detail": "Неверный email или пароль"}` |
+| 401 | Учётная запись неактивна | `{"detail": "Учётная запись неактивна"}` |
+| 422 | Ошибка валидации | `{"detail": "Поле 'email' обязательно"}` |
+
+**Примечания**:
+- Сообщение "Неверный email или пароль" используется для обоих случаев (email не существует или пароль неверен) для безопасности (FR-015)
+- `expires_in` указывает время в секундах до истечения токена
+- Токен должен передаваться в заголовке `Authorization: Bearer {token}`
+
+---
+
+## 2. Выход из системы (Logout)
+
+### POST /auth/logout
+
+Завершает сессию пользователя, добавляя токен в чёрный список.
+
+**Запрос**:
+
+```http
+POST /api/v1/auth/logout HTTP/1.1
+Host: localhost:8000
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+```
+
+**Успешный ответ** (200 OK):
+
+```json
+{
+  "message": "Успешный выход из системы"
+}
+```
+
+**Ошибки**:
+
+| Код | Описание | Ответ |
+|-----|----------|-------|
+| 401 | Токен не предоставлен | `{"detail": "Отсутствует токен авторизации"}` |
+| 401 | Невалидный токен | `{"detail": "Невалидный токен авторизации"}` |
+| 401 | Токен истёк | `{"detail": "Срок действия токена истёк"}` |
+| 401 | Токен уже отозван | `{"detail": "Токен уже отозван"}` |
+
+**Примечания**:
+- Токен из заголовка `Authorization` добавляется в `blacklisted_tokens`
+- Повторный logout с тем же токеном вернёт 401 (токен уже отозван)
+
+---
+
+## 3. Защищённый эндпоинт (пример)
+
+### GET /users/me
+
+Получает информацию о текущем пользователе (пример защищённого эндпоинта).
+
+**Запрос**:
+
+```http
+GET /api/v1/users/me HTTP/1.1
+Host: localhost:8000
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+```
+
+**Успешный ответ** (200 OK):
+
+```json
+{
+  "id": 123,
+  "email": "user@example.com",
+  "first_name": "Иван",
+  "last_name": "Иванов",
+  "is_active": true
+}
+```
+
+**Ошибки**:
+
+| Код | Описание | Ответ |
+|-----|----------|-------|
+| 401 | Токен не предоставлен | `{"detail": "Отсутствует токен авторизации"}` |
+| 401 | Невалидный токен | `{"detail": "Невалидный токен авторизации"}` |
+| 401 | Токен истёк | `{"detail": "Срок действия токена истёк"}` |
+| 401 | Токен отозван | `{"detail": "Токен отозван"}` |
+| 401 | Учётная запись неактивна | `{"detail": "Учётная запись неактивна"}` |
+| 404 | Пользователь не найден | `{"detail": "Пользователь не найден"}` |
+
+**Примечания**:
+- Проверка токена происходит через dependency `get_current_user`
+- Проверяется: валидность токена, отсутствие в blacklist, is_active=True
+- Если пользователь был деактивирован после выдачи токена, запрос будет отклонён (401)
+
+---
+
+## 4. Публичные эндпоинты (без авторизации)
+
+### POST /users/ (регистрация)
+
+Пример публичного эндпоинта, не требующего авторизации.
+
+**Запрос**:
+
+```http
+POST /api/v1/users/ HTTP/1.1
+Host: localhost:8000
+Content-Type: application/json
+
+{
+  "email": "newuser@example.com",
+  "first_name": "Пётр",
+  "last_name": "Петров",
+  "password": "Password456",
+  "repeat_password": "Password456"
+}
+```
+
+**Примечание**: Заголовок `Authorization` не требуется.
+
+---
+
+## Заголовок Authorization
+
+**Формат**:
+
+```http
+Authorization: Bearer {access_token}
+```
+
+**Пример**:
+
+```http
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjMiLCJ1c2VyX2lkIjoxMjMsImlzX2FjdGl2ZSI6dHJ1ZSwiaWF0IjoxNzM2MTIzNDU2LCJleHAiOjE3MzYyMDk4NTYsImp0aSI6IjEyMzQ1Njc4LTEyMzQtMTIzNC0xMjM0LTEyMzQ1Njc4OTFiMiJ9.signature
+```
+
+**Описание**:
+- `Bearer`: тип токена (фиксированная строка)
+- `{access_token}`: JWT токен, полученный от `/auth/login`
+
+---
+
+## Коды статусов HTTP
+
+| Код | Значение | Когда возвращается |
+|-----|----------|-------------------|
+| 200 | OK | Успешный запрос (login, logout, get user) |
+| 201 | Created | Пользователь создан (регистрация) |
+| 401 | Unauthorized | Проблемы с токеном или учётной записью |
+| 403 | Forbidden | Доступ запрещён (даже с валидным токеном) |
+| 404 | Not Found | Ресурс не найден |
+| 422 | Unprocessable Entity | Ошибка валидации данных |
+| 500 | Internal Server Error | Внутренняя ошибка сервера |
+
+---
+
+## Примеры использования в curl
+
+### Аутентификация
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password": "Password123"
+  }'
+```
+
+### Выход из системы
+
+```bash
+TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+
+curl -X POST "http://localhost:8000/api/v1/auth/logout" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### Получение текущего пользователя
+
+```bash
+TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+
+curl -X GET "http://localhost:8000/api/v1/users/me" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+---
+
+## WebSocket (если применимо)
+
+Для WebSocket подключений токен передаётся через query параметр:
+
+```
+ws://localhost:8000/api/v1/ws?token={access_token}
+```
+
+**Примечание**: WebSocket не реализуется в текущей функции (scope limitation).
+
+---
+
+## OpenAPI спецификация
+
+FastAPI автоматически генерирует OpenAPI документацию по адресам:
+- Swagger UI: `http://localhost:8000/docs`
+- ReDoc: `http://localhost:8000/redoc`
+
+Дополнительная документация OpenAPI не требуется (принцип XV конституции).
