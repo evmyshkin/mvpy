@@ -557,3 +557,79 @@ async def test_update_user_all_errors(
     assert 'email' in error_fields or any('email' in str(err).lower() for err in errors)
     assert 'first_name' in error_fields or any('first_name' in str(err).lower() for err in errors)
     assert 'password' in error_fields or any('password' in str(err).lower() for err in errors)
+
+
+# Тесты для деактивации пользователя (DELETE /api/v1/users/{email})
+@pytest.mark.asyncio
+async def test_deactivate_user_success(
+    async_client: AsyncClient,
+    valid_user_request: UserCreateRequest,
+) -> None:
+    """Тест успешной деактивации пользователя.
+
+    Args:
+        async_client: Асинхронный HTTP клиент
+        valid_user_request: Валидный запрос на создание пользователя
+    """
+    # Arrange - создаём пользователя
+    create_response = await async_client.post(
+        '/api/v1/users/',
+        json=valid_user_request.model_dump(),
+    )
+    assert create_response.status_code == 201
+    user_email = create_response.json()['email']
+
+    # Act - деактивируем пользователя
+    delete_response = await async_client.delete(f'/api/v1/users/{user_email}')
+
+    # Assert - проверяем статус 204 No Content
+    assert delete_response.status_code == 204
+    assert delete_response.content == b''
+
+
+@pytest.mark.asyncio
+async def test_deactivate_user_not_found(
+    async_client: AsyncClient,
+) -> None:
+    """Тест попытки деактивировать несуществующего пользователя.
+
+    Args:
+        async_client: Асинхронный HTTP клиент
+    """
+    # Act - пытаемся деактивировать несуществующего пользователя
+    response = await async_client.delete('/api/v1/users/nonexistent@example.com')
+
+    # Assert - должен вернуть 404
+    assert response.status_code == 404
+    assert response.json()['detail'] == ErrorMessages.USER_NOT_FOUND.value
+
+
+@pytest.mark.asyncio
+async def test_deactivate_user_already_deactivated(
+    async_client: AsyncClient,
+    valid_user_request: UserCreateRequest,
+) -> None:
+    """Тест попытки деактивировать уже деактивированного пользователя.
+
+    Args:
+        async_client: Асинхронный HTTP клиент
+        valid_user_request: Валидный запрос на создание пользователя
+    """
+    # Arrange - создаём и деактивируем пользователя
+    create_response = await async_client.post(
+        '/api/v1/users/',
+        json=valid_user_request.model_dump(),
+    )
+    assert create_response.status_code == 201
+    user_email = create_response.json()['email']
+
+    # Первая деактивация
+    delete_response1 = await async_client.delete(f'/api/v1/users/{user_email}')
+    assert delete_response1.status_code == 204
+
+    # Act - вторая попытка деактивации
+    delete_response2 = await async_client.delete(f'/api/v1/users/{user_email}')
+
+    # Assert - должен вернуть 404 как для несуществующего пользователя
+    assert delete_response2.status_code == 404
+    assert delete_response2.json()['detail'] == ErrorMessages.USER_NOT_FOUND.value

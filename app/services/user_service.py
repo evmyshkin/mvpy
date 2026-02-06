@@ -36,6 +36,7 @@ class UserService(BaseService):
     """Сервис для бизнес-логики пользователей."""
 
     def __init__(self) -> None:
+        """Инициализировать сервис пользователей."""
         super().__init__()
         self.crud = UsersCrud()
 
@@ -152,3 +153,28 @@ class UserService(BaseService):
             first_name=updated_user.first_name,
             last_name=updated_user.last_name,
         )
+
+    async def deactivate_user(
+        self,
+        session: AsyncSession,
+        email: str,
+    ) -> None:
+        """Деактивировать пользователя по email.
+
+        Args:
+            session: Асинхронная сессия БД
+            email: Email пользователя для деактивации
+
+        Raises:
+            HTTPException: Если пользователь не найден или уже деактивирован (404)
+        """
+        # Проверяем что пользователь существует и активен
+        user = await self.crud.find_by_email(session, email)
+        if user is None:
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND,
+                detail=ErrorMessages.USER_NOT_FOUND.value,
+            )
+
+        # Деактивируем пользователя
+        await self.crud.deactivate_by_email(session, email)

@@ -1,0 +1,73 @@
+openapi: 3.1.0
+info:
+  title: User Deactivation API
+  description: API для деактивации пользователей
+  version: 1.0.0
+
+paths:
+  /api/v1/users/{email}:
+    delete:
+      summary: Деактивировать пользователя
+      description: >
+        Деактивирует пользователя по email-адресу, устанавливая is_active=False.
+        Деактивированный пользователь не может аутентифицироваться или быть обновлён.
+        Данные пользователя сохраняются в базе данных.
+      operationId: deactivateUser
+      tags:
+        - Users
+      parameters:
+        - name: email
+          in: path
+          required: true
+          description: Email пользователя для деактивации
+          schema:
+            type: string
+            format: email
+            example: user@example.com
+      responses:
+        '204':
+          description: Пользователь успешно деактивирован
+          content: {}
+        '404':
+          description: Пользователь не найден или уже деактивирован
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+                    example: Пользователь не найден
+        '400':
+          description: Некорректный формат email
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+                    example: Некорректный формат email
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+                    example: Внутренняя ошибка сервера
+
+components:
+  schemas:
+    ErrorDetail:
+      type: object
+      properties:
+        detail:
+          type: string
+          description: Описание ошибки
+
+tags:
+  - name: Users
+    description: Операции с пользователями

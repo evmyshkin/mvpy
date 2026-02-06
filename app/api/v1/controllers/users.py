@@ -3,6 +3,8 @@
 from fastapi import APIRouter
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.responses import Response
+from starlette.status import HTTP_204_NO_CONTENT
 
 from app.api.v1.schemas.users import UserCreateRequest
 from app.api.v1.schemas.users import UserCreateResponse
@@ -49,3 +51,24 @@ async def update_user(
         Данные обновлённого пользователя
     """
     return await user_service.update_user(session=db, user_id=user_id, user_data=user_data)
+
+
+@router.delete('/{email}')
+async def deactivate_user(
+    email: str,
+    db: AsyncSession = Depends(connector.get_session),
+) -> Response:
+    """Деактивировать пользователя по email.
+
+    Args:
+        email: Email пользователя для деактивации
+        db: Асинхронная сессия БД
+
+    Returns:
+        204 No Content при успешной деактивации
+
+    Raises:
+        HTTPException: Если пользователь не найден или уже деактивирован (404)
+    """
+    await user_service.deactivate_user(session=db, email=email)
+    return Response(status_code=HTTP_204_NO_CONTENT)

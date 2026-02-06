@@ -184,3 +184,99 @@ async def test_update_user_password_hashed(
     assert user_from_db.password_hash != new_password
     # Проверяем, что пароль захеширован (bcrypt хеши начинаются с $2b$)
     assert user_from_db.password_hash.startswith('$2b$')
+
+
+# Тесты для деактивации пользователя
+@pytest.mark.asyncio
+async def test_deactivate_user_success(
+    db_session,
+    user_service: UserService,
+    valid_user_request: UserCreateRequest,
+) -> None:
+    """Тест успешной деактивации пользователя.
+
+    Args:
+        db_session: Сессия базы данных
+        user_service: Сервис пользователей
+        valid_user_request: Валидный запрос на создание пользователя
+    """
+    # Arrange - создаём пользователя
+    created_user = await user_service.create_user(
+        session=db_session,
+        user_data=valid_user_request,
+    )
+
+    # Act - деактивируем пользователя
+    await user_service.deactivate_user(
+        session=db_session,
+        email=created_user.email,
+    )
+
+    # Assert - проверяем что пользователь деактивирован
+    from app.db.crud.users import UsersCrud
+
+    user_from_db = await UsersCrud().find_by_email(db_session, created_user.email)
+    assert user_from_db is None  # Пользователь не должен быть найден (is_active=False)
+
+    # Но пользователь должен существовать в БД (проверяем напрямую без фильтра is_active)
+    all_users = await UsersCrud().find_all(db_session)
+    deactivated_user = next((u for u in all_users if u.email == created_user.email), None)
+    assert deactivated_user is not None
+    assert deactivated_user.is_active is False
+
+
+@pytest.mark.asyncio
+async def test_deactivate_user_not_found(
+    db_session,
+    user_service: UserService,
+) -> None:
+    """Тест деактивации несуществующего пользователя.
+
+    Args:
+        db_session: Сессия базы данных
+        user_service: Сервис пользователей
+    """
+    # Act & Assert - пытаемся деактивировать несуществующего пользователя
+    with pytest.raises(HTTPException) as exc_info:
+        await user_service.deactivate_user(
+            session=db_session,
+            email='nonexistent@example.com',
+        )
+
+    assert exc_info.value.status_code == HTTP_404_NOT_FOUND
+    assert exc_info.value.detail == ErrorMessages.USER_NOT_FOUND.value
+
+
+@pytest.mark.asyncio
+async def test_deactivate_user_already_deactivated(
+    db_session,
+    user_service: UserService,
+    valid_user_request: UserCreateRequest,
+) -> None:
+    """Тест попытки деактивировать уже деактивированного пользователя.
+
+    Args:
+        db_session: Сессия базы данных
+        user_service: Сервис пользователей
+        valid_user_request: Валидный запрос на создание пользователя
+    """
+    # Arrange - создаём и деактивируем пользователя
+    created_user = await user_service.create_user(
+        session=db_session,
+        user_data=valid_user_request,
+    )
+
+    await user_service.deactivate_user(
+        session=db_session,
+        email=created_user.email,
+    )
+
+    # Act & Assert - вторая попытка деактивации должна вернуть 404
+    with pytest.raises(HTTPException) as exc_info:
+        await user_service.deactivate_user(
+            session=db_session,
+            email=created_user.email,
+        )
+
+    assert exc_info.value.status_code == HTTP_404_NOT_FOUND
+    assert exc_info.value.detail == ErrorMessages.USER_NOT_FOUND.value
