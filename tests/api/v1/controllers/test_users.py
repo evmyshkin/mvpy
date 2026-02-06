@@ -633,3 +633,241 @@ async def test_deactivate_user_already_deactivated(
     # Assert - должен вернуть 404 как для несуществующего пользователя
     assert delete_response2.status_code == 404
     assert delete_response2.json()['detail'] == ErrorMessages.USER_NOT_FOUND.value
+
+
+# Тесты для поиска пользователя по email (GET /api/v1/users/?email=...)
+@pytest.mark.asyncio
+async def test_search_user_by_email_success(
+    async_client: AsyncClient,
+    valid_user_request: UserCreateRequest,
+) -> None:
+    """Тест успешного поиска пользователя по email.
+
+    Args:
+        async_client: Асинхронный HTTP клиент
+        valid_user_request: Валидный запрос на создание пользователя
+    """
+    # Arrange - создаём пользователя
+    create_response = await async_client.post(
+        '/api/v1/users/',
+        json=valid_user_request.model_dump(),
+    )
+    assert create_response.status_code == 201
+    created_user = create_response.json()
+
+    # Act - ищем пользователя по email
+    search_response = await async_client.get(
+        f'/api/v1/users/?email={valid_user_request.email}',
+    )
+
+    # Assert - проверяем статус и данные ответа
+    assert search_response.status_code == 200
+    data = search_response.json()
+    assert data['id'] == created_user['id']
+    assert data['email'] == valid_user_request.email
+    assert data['first_name'] == valid_user_request.first_name
+    assert data['last_name'] == valid_user_request.last_name
+
+    # Проверяем что пароль не возвращается
+    assert 'password' not in data
+    assert 'password_hash' not in data
+
+
+@pytest.mark.asyncio
+async def test_search_user_by_email_case_insensitive(
+    async_client: AsyncClient,
+    valid_user_request: UserCreateRequest,
+) -> None:
+    """Тест поиска пользователя по email без учета регистра.
+
+    Args:
+        async_client: Асинхронный HTTP клиент
+        valid_user_request: Валидный запрос на создание пользователя
+    """
+    # Arrange - создаём пользователя с lowercase email
+    create_response = await async_client.post(
+        '/api/v1/users/',
+        json=valid_user_request.model_dump(),
+    )
+    assert create_response.status_code == 201
+
+    # Act - ищем с uppercase email
+    uppercase_email = valid_user_request.email.upper()
+    search_response = await async_client.get(
+        f'/api/v1/users/?email={uppercase_email}',
+    )
+
+    # Assert - пользователь должен быть найден
+    assert search_response.status_code == 200
+    data = search_response.json()
+    assert data['email'] == valid_user_request.email
+
+
+@pytest.mark.asyncio
+async def test_search_user_by_email_not_found(
+    async_client: AsyncClient,
+) -> None:
+    """Тест поиска несуществующего пользователя.
+
+    Args:
+        async_client: Асинхронный HTTP клиент
+    """
+    # Act - ищем несуществующего пользователя
+    response = await async_client.get('/api/v1/users/?email=notfound@example.com')
+
+    # Assert - должен вернуть 404 с русским сообщением
+    assert response.status_code == 404
+    assert response.json()['detail'] == 'Пользователь с указанным email не найден'
+
+
+@pytest.mark.asyncio
+async def test_search_user_by_email_invalid_format(
+    async_client: AsyncClient,
+) -> None:
+    """Тест поиска с невалидным форматом email.
+
+    Args:
+        async_client: Асинхронный HTTP клиент
+    """
+    # Act - отправляем запрос с невалидным email (без @)
+    response = await async_client.get('/api/v1/users/?email=invalid-email')
+
+    # Assert - должен вернуть 422 (ошибка валидации)
+    assert response.status_code == 422
+
+
+# Тесты для получения списка всех пользователей (GET /api/v1/users/)
+@pytest.mark.asyncio
+async def test_get_all_users_success(
+    async_client: AsyncClient,
+    valid_user_request: UserCreateRequest,
+    faker,
+) -> None:
+    """Тест успешного получения списка всех пользователей.
+
+    Args:
+        async_client: Асинхронный HTTP клиент
+        valid_user_request: Валидный запрос на создание пользователя
+        faker: Генератор тестовых данных
+    """
+    # Arrange - создаём нескольких пользователей
+    await async_client.post('/api/v1/users/', json=valid_user_request.model_dump())
+
+    user2_request = UserCreateRequest(
+        email=faker.email(),
+        first_name='Пётр',
+        last_name='Петров',
+        password='Password123',
+    )
+    await async_client.post('/api/v1/users/', json=user2_request.model_dump())
+
+    # Act - получаем список всех пользователей
+    response = await async_client.get('/api/v1/users/')
+
+    # Assert - проверяем статус и массив с пользователями
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+    assert len(data) == 2
+
+    # Проверяем структуру первого пользователя
+    assert 'id' in data[0]
+    assert 'email' in data[0]
+    assert 'first_name' in data[0]
+    assert 'last_name' in data[0]
+    # Проверяем что пароль не возвращается
+    assert 'password' not in data[0]
+    assert 'password_hash' not in data[0]
+
+
+@pytest.mark.asyncio
+async def test_get_all_users_empty_list(
+    async_client: AsyncClient,
+) -> None:
+    """Тест получения пустого списка пользователей.
+
+    Args:
+        async_client: Асинхронный HTTP клиент
+    """
+    # Act - получаем список пользователей (не создавая ни одного)
+    response = await async_client.get('/api/v1/users/')
+
+    # Assert - должен вернуть 200 с пустым массивом
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+@pytest.mark.asyncio
+async def test_get_all_users_password_not_exposed(
+    async_client: AsyncClient,
+    valid_user_request: UserCreateRequest,
+) -> None:
+    """Тест что пароль не возвращается в списке пользователей.
+
+    Args:
+        async_client: Асинхронный HTTP клиент
+        valid_user_request: Валидный запрос на создание пользователя
+    """
+    # Arrange - создаём пользователя
+    await async_client.post('/api/v1/users/', json=valid_user_request.model_dump())
+
+    # Act - получаем список всех пользователей
+    response = await async_client.get('/api/v1/users/')
+
+    # Assert - проверяем что password_hash отсутствует в ответе
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert 'password' not in data[0]
+    assert 'password_hash' not in data[0]
+
+
+@pytest.mark.asyncio
+async def test_search_user_by_email_vs_all_users(
+    async_client: AsyncClient,
+    valid_user_request: UserCreateRequest,
+    faker,
+) -> None:
+    """Тест различия между поиском по email и списком всех пользователей.
+
+    Args:
+        async_client: Асинхронный HTTP клиент
+        valid_user_request: Валидный запрос на создание пользователя
+        faker: Генератор тестовых данных
+    """
+    # Arrange - создаём нескольких пользователей
+    response1 = await async_client.post(
+        '/api/v1/users/',
+        json=valid_user_request.model_dump(),
+    )
+    assert response1.status_code == 201
+    user1_email = response1.json()['email']
+
+    user2_request = UserCreateRequest(
+        email=faker.email(),
+        first_name='Пётр',
+        last_name='Петров',
+        password='Password123',
+    )
+    response2 = await async_client.post('/api/v1/users/', json=user2_request.model_dump())
+    assert response2.status_code == 201
+
+    # Act 1 - ищем по email (должен вернуть одного пользователя)
+    search_response = await async_client.get(f'/api/v1/users/?email={user1_email}')
+
+    # Act 2 - получаем всех пользователей (должен вернуть список)
+    all_response = await async_client.get('/api/v1/users/')
+
+    # Assert - результаты должны различаться
+    assert search_response.status_code == 200
+    search_data = search_response.json()
+    assert isinstance(search_data, dict)
+    assert search_data['email'] == user1_email
+
+    assert all_response.status_code == 200
+    all_data = all_response.json()
+    assert isinstance(all_data, list)
+    assert len(all_data) == 2
+    # При поиске по email возвращается dict, при получении всех - list
+    assert isinstance(search_data, dict)
+    assert isinstance(all_data, list)

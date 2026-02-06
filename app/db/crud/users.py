@@ -1,6 +1,7 @@
 """CRUD операции для пользователей."""
 
 from sqlalchemy import and_
+from sqlalchemy import func
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -47,6 +48,35 @@ class UsersCrud(BaseCrud[User]):
             True если email существует, False иначе
         """
         return await self.find_by_email(session, email) is not None
+
+    async def find_by_email_case_insensitive(
+        self, session: AsyncSession, email: str
+    ) -> User | None:
+        """Найти пользователя по email без учета регистра.
+
+        Args:
+            session: Асинхронная сессия БД
+            email: Email пользователя
+
+        Returns:
+            Объект User или None если не найден
+        """
+        stmt = select(User).where(func.lower(User.email) == func.lower(email))
+        result = await session.execute(stmt)
+        return result.scalars().first()
+
+    async def find_all_users(self, session: AsyncSession) -> list[User]:
+        """Получить список всех пользователей.
+
+        Args:
+            session: Асинхронная сессия БД
+
+        Returns:
+            Список всех объектов User
+        """
+        stmt = select(User)
+        result = await session.execute(stmt)
+        return list(result.scalars().all())
 
     async def deactivate_by_email(self, session: AsyncSession, email: str) -> User | None:
         """Деактивировать пользователя по email.

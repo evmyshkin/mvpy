@@ -280,3 +280,118 @@ async def test_deactivate_user_already_deactivated(
 
     assert exc_info.value.status_code == HTTP_404_NOT_FOUND
     assert exc_info.value.detail == ErrorMessages.USER_NOT_FOUND.value
+
+
+# Тесты для поиска пользователя по email
+@pytest.mark.asyncio
+async def test_search_user_by_email_success(
+    db_session,
+    user_service: UserService,
+    valid_user_request: UserCreateRequest,
+) -> None:
+    """Тест успешного поиска пользователя по email.
+
+    Args:
+        db_session: Сессия базы данных
+        user_service: Сервис пользователей
+        valid_user_request: Валидный запрос на создание пользователя
+    """
+    # Arrange - создаём пользователя
+    created_user = await user_service.create_user(
+        session=db_session,
+        user_data=valid_user_request,
+    )
+
+    # Act - ищем пользователя по email
+    found_user = await user_service.search_user_by_email(
+        session=db_session,
+        email=created_user.email,
+    )
+
+    # Assert - проверяем что пользователь найден с корректными данными
+    assert found_user.id == created_user.id
+    assert found_user.email == created_user.email
+    assert found_user.first_name == created_user.first_name
+    assert found_user.last_name == created_user.last_name
+
+
+@pytest.mark.asyncio
+async def test_search_user_by_email_not_found(
+    db_session,
+    user_service: UserService,
+) -> None:
+    """Тест поиска несуществующего пользователя.
+
+    Args:
+        db_session: Сессия базы данных
+        user_service: Сервис пользователей
+    """
+    # Act & Assert - пытаемся найти несуществующего пользователя
+    with pytest.raises(HTTPException) as exc_info:
+        await user_service.search_user_by_email(
+            session=db_session,
+            email='notfound@example.com',
+        )
+
+    assert exc_info.value.status_code == HTTP_404_NOT_FOUND
+    assert exc_info.value.detail == 'Пользователь с указанным email не найден'
+
+
+# Тесты для получения списка всех пользователей
+@pytest.mark.asyncio
+async def test_get_all_users_success(
+    db_session,
+    user_service: UserService,
+    valid_user_request: UserCreateRequest,
+    faker,
+) -> None:
+    """Тест успешного получения списка всех пользователей.
+
+    Args:
+        db_session: Сессия базы данных
+        user_service: Сервис пользователей
+        valid_user_request: Валидный запрос на создание пользователя
+        faker: Генератор тестовых данных
+    """
+    # Arrange - создаём нескольких пользователей
+    user1 = await user_service.create_user(
+        session=db_session,
+        user_data=valid_user_request,
+    )
+
+    user2_request = UserCreateRequest(
+        email=faker.email(),
+        first_name='Пётр',
+        last_name='Петров',
+        password='Password123',
+    )
+    user2 = await user_service.create_user(session=db_session, user_data=user2_request)
+
+    # Act - получаем список всех пользователей
+    all_users = await user_service.get_all_users(session=db_session)
+
+    # Assert - проверяем что вернулся список с корректным количеством
+    assert len(all_users) == 2
+    assert all_users[0].id == user1.id
+    assert all_users[0].email == user1.email
+    assert all_users[1].id == user2.id
+    assert all_users[1].email == user2.email
+
+
+@pytest.mark.asyncio
+async def test_get_all_users_empty(
+    db_session,
+    user_service: UserService,
+) -> None:
+    """Тест получения пустого списка пользователей.
+
+    Args:
+        db_session: Сессия базы данных
+        user_service: Сервис пользователей
+    """
+    # Act - получаем список пользователей (не создавая ни одного)
+    all_users = await user_service.get_all_users(session=db_session)
+
+    # Assert - должен вернуться пустой список
+    assert len(all_users) == 0
+    assert all_users == []

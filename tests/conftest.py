@@ -17,6 +17,7 @@ from sqlalchemy.pool import NullPool
 from app.api.v1.schemas.users import UserCreateRequest
 from app.api.v1.schemas.users import UserCreateResponse
 from app.api.v1.schemas.users import UserUpdateRequest
+from app.api.v1.schemas.users import UserUpdateResponse
 from app.config import config
 from app.db.base import BaseDBModel
 from app.db.session import DBConnector
@@ -208,4 +209,22 @@ async def existing_user(db_session: AsyncSession, faker: Faker) -> UserCreateRes
         email=user.email,
         first_name=user.first_name,
         last_name=user.last_name,
+    )
+
+
+@pytest.fixture
+def valid_user_response(faker: Faker) -> UserUpdateResponse:
+    """Валидный ответ при поиске пользователя.
+
+    Args:
+        faker: Генератор тестовых данных
+
+    Returns:
+        Pydantic схема UserUpdateResponse с валидными данными
+    """
+    return UserUpdateResponse(
+        id=1,
+        email=faker.email(),
+        first_name='Иван',
+        last_name='Иванов',
     )

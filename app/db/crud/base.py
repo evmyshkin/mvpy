@@ -65,14 +65,14 @@ class BaseCrud[ModelType]:
     ) -> ModelType | None:
         """Ищет одну запись по атрибутам."""
         conditions = [getattr(self.model, field) == value for field, value in filter_by.items()]
-        query = select(self.model).where(and_(*conditions))
+        query = select(self.model).where(and_(*conditions)) if conditions else select(self.model)
         result = await session.execute(query)
         return result.scalar_one_or_none()
 
     async def find_all(self, session: AsyncSession, **filter_by) -> Sequence[ModelType]:
         """Возвращает все записи по фильтру."""
         conditions = [getattr(self.model, field) == value for field, value in filter_by.items()]
-        query = select(self.model).where(and_(*conditions))
+        query = select(self.model).where(and_(*conditions)) if conditions else select(self.model)
         result = await session.execute(query)
         return result.scalars().all()
 
@@ -84,7 +84,7 @@ class BaseCrud[ModelType]:
         conditions = [getattr(self.model, k) == v for k, v in filter_by.items()]
         stmt = (
             update(self.model)
-            .where(and_(*conditions))
+            .where(and_(*conditions) if conditions else True)
             .values(**values)
             .execution_options(synchronize_session='fetch')
             .returning(self.model)
@@ -99,7 +99,7 @@ class BaseCrud[ModelType]:
     ) -> None:
         """Обновляет все записи по фильтру."""
         conditions = [getattr(self.model, k) == v for k, v in filter_by.items()]
-        stmt = update(self.model).where(and_(*conditions)).values(**values)
+        stmt = update(self.model).where(and_(*conditions) if conditions else True).values(**values)
         await session.execute(stmt)
         await session.commit()
 
@@ -107,7 +107,7 @@ class BaseCrud[ModelType]:
     async def delete_one(self, session: AsyncSession, **filter_by: object) -> BaseDBModel | None:
         """Удаляет одну запись по фильтру."""
         conditions = [getattr(self.model, field) == value for field, value in filter_by.items()]
-        stmt = delete(self.model).where(and_(*conditions))
+        stmt = delete(self.model).where(and_(*conditions) if conditions else True)
         result = await session.execute(stmt)
         record = result.scalar_one_or_none()
 

@@ -178,3 +178,59 @@ class UserService(BaseService):
 
         # Деактивируем пользователя
         await self.crud.deactivate_by_email(session, email)
+
+    async def search_user_by_email(
+        self,
+        session: AsyncSession,
+        email: str,
+    ) -> UserUpdateResponse:
+        """Найти пользователя по email.
+
+        Args:
+            session: Асинхронная сессия БД
+            email: Email пользователя для поиска
+
+        Returns:
+            Схема найденного пользователя
+
+        Raises:
+            HTTPException: Если пользователь с указанным email не найден (404)
+        """
+        user = await self.crud.find_by_email_case_insensitive(session, email)
+
+        if user is None:
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND,
+                detail='Пользователь с указанным email не найден',
+            )
+
+        return UserUpdateResponse(
+            id=user.id,
+            email=user.email,
+            first_name=user.first_name,
+            last_name=user.last_name,
+        )
+
+    async def get_all_users(
+        self,
+        session: AsyncSession,
+    ) -> list[UserUpdateResponse]:
+        """Получить список всех пользователей.
+
+        Args:
+            session: Асинхронная сессия БД
+
+        Returns:
+            Список схем пользователей
+        """
+        users = await self.crud.find_all_users(session)
+
+        return [
+            UserUpdateResponse(
+                id=user.id,
+                email=user.email,
+                first_name=user.first_name,
+                last_name=user.last_name,
+            )
+            for user in users
+        ]
