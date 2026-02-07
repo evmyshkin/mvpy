@@ -27,6 +27,7 @@ from app.config import config
 from app.db.base import BaseDBModel
 from app.db.session import DBConnector
 from app.main import app
+from app.services.role_service import RoleService
 from app.services.user_service import UserService
 
 
@@ -98,7 +99,12 @@ async def db_session(test_db_engine) -> AsyncGenerator[AsyncSession]:
     # Очистка перед тестом
     async with test_db_engine.begin() as conn:
         for table in BaseDBModel.metadata.sorted_tables:
-            await conn.execute(text(f'TRUNCATE TABLE {table.name} CASCADE'))
+            if table.name != 'roles':  # Не удаляем роли
+
+                def truncate_table(connection, table_name=table.name):
+                    return connection.execute(text(f'TRUNCATE TABLE {table_name} CASCADE'))
+
+                await conn.run_sync(truncate_table)
 
     try:
         yield session
@@ -108,7 +114,12 @@ async def db_session(test_db_engine) -> AsyncGenerator[AsyncSession]:
         # Очистка после теста, чтобы в БД не оставалось данных
         async with test_db_engine.begin() as conn:
             for table in BaseDBModel.metadata.sorted_tables:
-                await conn.execute(text(f'TRUNCATE TABLE {table.name} CASCADE'))
+                if table.name != 'roles':  # Не удаляем роли
+
+                    def truncate_table(connection, table_name=table.name):
+                        return connection.execute(text(f'TRUNCATE TABLE {table_name} CASCADE'))
+
+                    await conn.run_sync(truncate_table)
 
 
 @pytest_asyncio.fixture
@@ -207,6 +218,19 @@ async def user_service(db_session: AsyncSession) -> UserService:
         Экземпляр UserService, готовый к использованию с db_session
     """
     return UserService()
+
+
+@pytest_asyncio.fixture
+async def role_service(db_session: AsyncSession) -> RoleService:
+    """Fixture для RoleService с тестовой сессией БД.
+
+    Args:
+        db_session: Тестовая сессия БД
+
+    Returns:
+        Экземпляр RoleService, готовый к использованию с db_session
+    """
+    return RoleService()
 
 
 @pytest.fixture
@@ -353,3 +377,68 @@ def inactive_user_token() -> str:
         JWT токен с is_active=False
     """
     return create_test_jwt_token(user_id=2, is_active=False)
+
+
+# Role Fixtures (T035-T036)
+
+
+@pytest_asyncio.fixture
+async def default_admin_user(db_session: AsyncSession) -> UserCreateResponse:
+    """Создать администратора по умолчанию для тестов.
+
+    Args:
+        db_session: Тестовая сессия БД
+
+    Returns:
+        Созданный admin пользователь с role_id=3
+    """
+    from app.api.v1.schemas.users import UserCreateRequest
+
+    service = UserService()
+
+    admin_request = UserCreateRequest(
+        email='admin@local.host',
+        first_name='Admin',
+        last_name='User',
+        password='Admin123',
+        repeat_password='Admin123',
+        role_id=3,  # admin role
+    )
+
+    admin_user = await service.create_user(session=db_session, user_data=admin_request)
+    return admin_user
+
+
+@pytest_asyncio.fixture
+async def test_roles(db_session: AsyncSession):
+    """Создать тестовые роли в базе данных.
+
+    Args:
+        db_session: Тестовая сессия БД
+
+    Returns:
+        Список созданных ролей
+    """
+    from sqlalchemy import text
+
+    # Вставляем роли если таблица пустая
+    result = await db_session.execute(text('SELECT COUNT(*) FROM roles'))
+    count = result.scalar()
+
+    if count == 0:
+        await db_session.execute(
+            text("""
+                INSERT INTO roles (id, name, description)
+                VALUES
+                    (1, 'user', 'Обычный пользователь системы'),
+                    (2, 'manager', 'Менеджер с расширенными правами'),
+                    (3, 'admin', 'Администратор системы')
+            """)
+        )
+        await db_session.commit()
+
+    # Получаем все роли
+    from app.db.crud.roles import role_crud
+
+    roles = await role_crud.find_all(db_session)
+    return roles

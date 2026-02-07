@@ -19,7 +19,7 @@ oauth2_scheme = HTTPBearer(auto_error=False)
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(oauth2_scheme),
     session: AsyncSession = Depends(DBConnector().get_session),
-) -> User:
+) -> User:  # TODO: shadows the CurrentUserService method name, consider renaming
     """Получить текущего пользователя из JWT токена.
 
     Args:

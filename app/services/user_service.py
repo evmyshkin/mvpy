@@ -67,6 +67,7 @@ class UserService(BaseService):
         # Подготовка данных для создания пользователя
         user_dict = user_data.model_dump()
         user_dict['password_hash'] = hash_password(user_data.password)
+        user_dict['role_id'] = 1  # По умолчанию роль "user" (id=1)
         del user_dict['password']
         del user_dict['repeat_password']
 
@@ -86,6 +87,7 @@ class UserService(BaseService):
             first_name=user.first_name,
             last_name=user.last_name,
             is_active=user.is_active,
+            role_id=user.role_id,
         )
 
     async def update_user(
@@ -160,6 +162,7 @@ class UserService(BaseService):
             first_name=updated_user.first_name,
             last_name=updated_user.last_name,
             is_active=updated_user.is_active,
+            role_id=updated_user.role_id,
         )
 
     async def deactivate_user(
@@ -223,6 +226,7 @@ class UserService(BaseService):
             first_name=user.first_name,
             last_name=user.last_name,
             is_active=user.is_active,
+            role_id=user.role_id,
         )
 
     async def search_user_by_email(
@@ -256,6 +260,7 @@ class UserService(BaseService):
             first_name=user.first_name,
             last_name=user.last_name,
             is_active=user.is_active,
+            role_id=user.role_id,
         )
 
     async def get_all_users(
@@ -279,6 +284,7 @@ class UserService(BaseService):
                 first_name=user.first_name,
                 last_name=user.last_name,
                 is_active=user.is_active,
+                role_id=user.role_id,
             )
             for user in users
         ]

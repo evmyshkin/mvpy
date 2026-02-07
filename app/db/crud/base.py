@@ -63,9 +63,18 @@ class BaseCrud[ModelType]:
     async def find_one_or_none(
         self, session: AsyncSession, **filter_by: object
     ) -> ModelType | None:
-        """Ищет одну запись по атрибутам."""
+        """Ищет одну запись по атрибутам.
+
+        Args:
+            session: Асинхронная сессия БД
+            **filter_by: Фильтры для поиска
+
+        Returns:
+            Найденная запись или None
+        """
         conditions = [getattr(self.model, field) == value for field, value in filter_by.items()]
         query = select(self.model).where(and_(*conditions)) if conditions else select(self.model)
+
         result = await session.execute(query)
         return result.scalar_one_or_none()
 

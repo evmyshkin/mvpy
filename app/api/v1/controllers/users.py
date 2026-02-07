@@ -19,7 +19,7 @@ router = APIRouter()
 user_service = UserService()
 
 
-@router.post('/', response_model=UserCreateResponse, status_code=201)
+@router.post('/', response_model=UserCreateResponse, status_code=201, tags=['users'])
 async def create_user(
     user_data: UserCreateRequest,
     db: AsyncSession = Depends(connector.get_session),
@@ -36,7 +36,29 @@ async def create_user(
     return await user_service.create_user(session=db, user_data=user_data)
 
 
-@router.put('/{user_id}', response_model=UserUpdateResponse, status_code=200)
+@router.get('/me', status_code=200, tags=['users'])
+async def get_current_user_info(
+    current_user: User = Depends(get_current_user),
+) -> UserUpdateResponse:
+    """Получить информацию о текущем аутентифицированном пользователе.
+
+    Args:
+        current_user: Текущий аутентифицированный пользователь
+
+    Returns:
+        Данные текущего пользователя
+    """
+    return UserUpdateResponse(
+        id=current_user.id,
+        email=current_user.email,
+        first_name=current_user.first_name,
+        last_name=current_user.last_name,
+        is_active=current_user.is_active,
+        role_id=current_user.role_id,
+    )
+
+
+@router.put('/{user_id}', response_model=UserUpdateResponse, status_code=200, tags=['users'])
 async def update_user(
     user_id: int,
     user_data: UserUpdateRequest,
@@ -57,7 +79,7 @@ async def update_user(
     return await user_service.update_user(session=db, user_id=user_id, user_data=user_data)
 
 
-@router.delete('/{user_id}')
+@router.delete('/{user_id}', tags=['users'])
 async def deactivate_user(
     user_id: int,
     db: AsyncSession = Depends(connector.get_session),
@@ -80,7 +102,7 @@ async def deactivate_user(
     return Response(status_code=HTTP_204_NO_CONTENT)
 
 
-@router.get('/{user_id}', status_code=200)
+@router.get('/{user_id}', status_code=200, tags=['users'])
 async def get_user(
     user_id: int,
     db: AsyncSession = Depends(connector.get_session),
@@ -102,7 +124,7 @@ async def get_user(
     return await user_service.get_user_by_id(session=db, user_id=user_id)
 
 
-@router.get('/', status_code=200)
+@router.get('/', status_code=200, tags=['users'])
 async def get_all_users(
     db: AsyncSession = Depends(connector.get_session),
     current_user: User = Depends(get_current_user),
