@@ -208,12 +208,9 @@ specs/005-authenticate-user/
 ├── plan.md              # Этот файл (вывод команды /speckit.plan)
 ├── research.md          # Phase 0 вывод (команда /speckit.plan)
 ├── data-model.md        # Phase 1 вывод (команда /speckit.plan)
-├── quickstart.md        # Phase 1 вывод (команда /speckit.plan)
 ├── contracts/           # Phase 1 вывод (команда /speckit.plan)
 │   ├── auth.http        # HTTP контракты для аутентификации
 │   └── openapi.yaml     # OpenAPI спецификация (автогенерируемая FastAPI)
-├── checklists/          # Чеклисты качества
-│   └── requirements.md  # Чеклист качества требований
 └── tasks.md             # Phase 2 вывод (команда /speckit.tasks - НЕ создаётся /speckit.plan)
 ```
 
@@ -369,14 +366,13 @@ migrations/versions/
 9. Локализация: **Enum с сообщениями**
 10. Тестирование: **Real tokens в fixtures**
 
-### Phase 1: Дизайн (data-model.md, contracts/, quickstart.md)
+### Phase 1: Дизайн (data-model.md, contracts/)
 
 ✅ **Завершено** - Все артефакты дизайна созданы:
 
 1. **data-model.md**: Описание модели BlacklistedToken, JWT payload, Pydantic схемы
 2. **contracts/auth.http**: HTTP контракты для auth, logout, защищённых эндпоинтов
-3. **quickstart.md**: Инструкции для локального запуска и тестирования
-4. **Agent context**: Обновлён для новой технологии (JWT)
+3. **Agent context**: Обновлён для новой технологии (JWT)
 
 ---
 

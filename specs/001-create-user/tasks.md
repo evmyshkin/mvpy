@@ -225,4 +225,3 @@ T023 → T024 → T025 → T026 → T027 → T028
 - **Plan**: [plan.md](./plan.md) - Технический стек и архитектура
 - **Data Model**: [data-model.md](./data-model.md) - Схема БД и Pydantic модели
 - **Research**: [research.md](./research.md) - Технические решения
-- **Quickstart**: [quickstart.md](./quickstart.md) - Примеры использования

@@ -227,5 +227,4 @@ async def update_one_or_none(
 
 1. **data-model.md**: Описать сущности User, UpdateRequest, UpdateResponse
 2. **contracts/**: Создать OpenAPI спецификацию для PUT /users/{id}
-3. **quickstart.md**: Инструкция для разработчика по запуску и тестированию
-4. **Update agent context**: Добавить новые схемы и endpoint в контекст Claude
+3. **Update agent context**: Добавить новые схемы и endpoint в контекст Claude

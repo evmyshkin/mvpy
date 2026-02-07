@@ -215,7 +215,6 @@
 - [ ] T043 [P] Запустить pre-commit hooks: pre-commit run --all-files
 - [ ] T044 [P] Запустить mypy проверку: mypy app/
 - [ ] T045 [P] Проверить генерацию OpenAPI документации: запустить app, открыть http://localhost:8000/docs
-- [ ] T046 [P] Обновить quickstart.md с реальными примерами из реализации
 - [ ] T047 Запустить все тесты с покрытием: pytest --cov=app --cov-branch --cov-report=term-missing
 - [ ] T048 Создать коммит с изменениями: git add . && git commit -m "Implement authentication and authorization with JWT"
 
@@ -310,7 +309,7 @@ T038 (get_current_user tests) ← можно параллельно с → T039 
 ```
 T043 (pre-commit) ← можно параллельно с → T044 (mypy) →
                                                ←
-T045 (OpenAPI docs) ← можно параллельно с → T046 (Update quickstart.md)
+T045 (OpenAPI docs) ← можно параллельно с → T046
 ```
 
 ---

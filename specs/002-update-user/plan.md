@@ -135,7 +135,6 @@ specs/002-update-user/
 ├── plan.md              # Этот файл
 ├── research.md          # Phase 0 output
 ├── data-model.md        # Phase 1 output
-├── quickstart.md        # Phase 1 output
 ├── contracts/           # Phase 1 output
 │   └── update_user.yaml # OpenAPI контракт для PUT /users/{id}
 └── tasks.md             # Phase 2 output (создаётся через /speckit.tasks)

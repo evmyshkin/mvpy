@@ -73,11 +73,8 @@ specs/003-soft-delete-user/
 ├── plan.md              # Этот файл (результат /speckit.plan)
 ├── research.md          # Phase 0 output (результат /speckit.plan)
 ├── data-model.md        # Phase 1 output (результат /speckit.plan)
-├── quickstart.md        # Phase 1 output (результат /speckit.plan)
 ├── contracts/           # Phase 1 output (результат /speckit.plan)
 │   └── openapi.yaml     # OpenAPI спецификация эндпоинта
-├── checklists/          # Чеклисты качества
-│   └── requirements.md  # Чеклист качества спецификации
 └── tasks.md             # Phase 2 output (результат /speckit.tasks - НЕ создаётся в /speckit.plan)
 ```
 
@@ -161,15 +158,6 @@ migrations/versions/
 - `PATCH /api/v1/users/{id}` - автоматически предотвращает обновление неактивных пользователей (404 если is_active=False)
 
 **Результат**: OpenAPI спецификация в `contracts/openapi.yaml`
-
-## Quickstart Guide
-
-Инструкция для разработчиков по:
-1. Применению миграции БД (добавление is_active)
-2. Тестированию нового эндпоинта деактивации
-3. Пониманию поведения деактивации (is_active=False)
-
-**Результат**: quickstart.md с пошаговой инструкцией
 
 ## Agent Context Update
 

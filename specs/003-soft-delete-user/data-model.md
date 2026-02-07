@@ -237,7 +237,6 @@ CREATE INDEX idx_users_is_active ON users(is_active) WHERE is_active = false;
 
 1. ✅ Модель данных определена
 2. ➡️ Создать API контракты (`contracts/openapi.yaml`)
-3. ➡️ Создать Quickstart Guide (`quickstart.md`)
 4. ➡️ Обновить agent context
 
 ---

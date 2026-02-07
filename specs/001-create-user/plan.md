@@ -106,7 +106,6 @@ specs/001-create-user/
 ├── plan.md              # This file (/speckit.plan command output)
 ├── research.md          # Phase 0 output (/speckit.plan command)
 ├── data-model.md        # Phase 1 output (/speckit.plan command)
-├── quickstart.md        # Phase 1 output (/speckit.plan command)
 ├── contracts/           # Phase 1 output (/speckit.plan command)
 │   └── openapi.yaml     # OpenAPI 3.0 spec for user creation endpoint
 └── tasks.md             # Phase 2 output (/speckit.tasks command - NOT created by /speckit.plan)
@@ -235,10 +234,6 @@ requirements/  # or pyproject.toml if using UV
 ### API Contracts
 
 См. [contracts/openapi.yaml](./contracts/openapi.yaml)
-
-### Quickstart
-
-См. [quickstart.md](./quickstart.md)
 
 ---
 

@@ -343,7 +343,6 @@ uv add "python-jose[cryptography]>=3.3.0"
 
 1. Создать `data-model.md` с описанием BlacklistedToken модели
 2. Создать `contracts/auth.http` с примерами HTTP запросов
-3. Создать `quickstart.md` с инструкциями по локальному запуску
-4. Обновить agent context для новой технологии (JWT)
+3. Обновить agent context для новой технологии (JWT)
 
 **Статус**: ✅ Все NEEDS CLARIFICATION разрешены, можно переходить к Phase 1

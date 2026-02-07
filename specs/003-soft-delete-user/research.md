@@ -121,7 +121,6 @@ async def deactivate_user(self, session: AsyncSession, email: str) -> None:
 2. ➡️ Перейти к Phase 1: Design & Contracts
    - Создать `data-model.md` с детальной моделью данных
    - Создать `contracts/openapi.yaml` со спецификацией API
-   - Создать `quickstart.md` с инструкциями для разработчиков
    - Обновить agent context
 
 ---
