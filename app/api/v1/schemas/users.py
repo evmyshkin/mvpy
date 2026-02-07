@@ -7,6 +7,8 @@ from pydantic import EmailStr
 from pydantic import field_validator
 from pydantic import model_validator
 
+from app.api.v1.schemas.roles import RoleResponse
+
 
 def validate_name_field(value: str | None) -> str | None:
     """Переиспользуемый валидатор для полей имени и фамилии.
@@ -91,6 +93,7 @@ class UserCreateRequest(BaseModel):
     last_name: str
     password: str
     repeat_password: str
+    role_id: int | None = None  # Опциональный ID роли, по умолчанию присваивается роль "user"
 
     @field_validator('first_name', 'last_name')
     @classmethod
@@ -165,6 +168,7 @@ class UserCreateResponse(BaseModel):
     first_name: str
     last_name: str
     is_active: bool
+    role: RoleResponse
 
 
 class UserUpdateRequest(BaseModel):
@@ -260,3 +264,4 @@ class UserUpdateResponse(BaseModel):
     first_name: str
     last_name: str
     is_active: bool
+    role: RoleResponse
