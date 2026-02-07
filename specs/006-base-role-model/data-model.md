@@ -165,18 +165,6 @@ ALTER TABLE users ALTER COLUMN role_id SET NOT NULL;
 CREATE INDEX idx_users_role_id ON users(role_id);
 ```
 
-**Step 8**: Insert default admin user
-```python
-from passlib.context import CryptContext
-
-pwd_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
-password_hash = pwd_context.hash('Admin123')
-
-INSERT INTO users (email, first_name, last_name, password_hash, is_active, role_id)
-VALUES ('admin@local', 'Admin', 'System', %s, true, 3)
-ON CONFLICT (email) DO NOTHING;
-```
-
 **Rollback**:
 ```sql
 DROP INDEX IF EXISTS idx_users_role_id;
@@ -264,10 +252,6 @@ WHERE u.id = ?;
 2. **Privilege Escalation**:
    - Только пользователи с ролью "admin" могут изменять роли других пользователей
    - Пользователь не может изменить свою собственную роль
-
-3. **Default Admin Security**:
-   - Пароль администратора по умолчанию должен быть изменён при первом входе
-   - Или использовать переменные окружения для учётных данных
 
 ---
 

@@ -6,7 +6,7 @@
 
 ---
 
-## 1. SQLAlchemy 2.0 Relationship 最佳实践
+## 1. SQLAlchemy 2.0 Relationship
 
 ### Задача
 Изучить лучшие практики для relationship в SQLAlchemy 2.0 для связи User → Role (Many-to-One).
@@ -49,7 +49,7 @@ class User(BaseDBModel):
 ## 2. Alembic Data Migrations
 
 ### Задача
-Изучить паттерны для миграций данных в Alembic: создание 3 ролей (user, manager, admin) + 1 пользователя (admin).
+Изучить паттерны для миграций данных в Alembic: создание 3 ролей (user, manager, admin).
 
 ### Решение
 
@@ -95,16 +95,6 @@ def upgrade() -> None:
 
     # 5. Make role_id NOT NULL (already done in step 3)
 
-    # 6. Insert default admin user
-    from passlib.context import CryptContext
-    pwd_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
-    password_hash = pwd_context.hash('Admin123')  # TODO: from config
-
-    op.execute("""
-        INSERT INTO users (email, first_name, last_name, password_hash, is_active, role_id)
-        VALUES ('admin@local', 'Admin', 'System', %s, true, 3)
-        ON CONFLICT (email) DO NOTHING
-    """, (password_hash,))
 ```
 
 **Обработка повторных запусков**:
@@ -126,7 +116,7 @@ def upgrade() -> None:
 ## 3. Pydantic V2 Annotated Types для Enums
 
 ### Задача
-Изучить最佳实践 для Pydantic V2 с enum типами: валидация role_name (user/manager/admin).
+Изучить для Pydantic V2 с enum типами: валидация role_name (user/manager/admin).
 
 ### Решение
 

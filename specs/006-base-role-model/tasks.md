@@ -25,8 +25,6 @@
 **Purpose**: Подготовка миграции базы данных для ролевой модели
 
 - [X] T001 Создать файл миграции `migrations/versions/2026_02_07_add_role_model.py`
-- [X] T002 [P] Добавить константы для admin credentials в `app/config.py` (DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD)
-
 ---
 
 ## Phase 2: Foundational (Blocking Prerequisites)
@@ -71,28 +69,6 @@
 
 ---
 
-## Phase 4: User Story 2 - Администратор по умолчанию (Priority: P2)
-
-**Goal**: Создать учётную запись администратора с ролью "admin" при миграции
-
-**Independent Test**: Аутентификация с admin@local / Admin123 возвращает валидный токен и пользователь имеет роль "admin"
-
-### Tests for User Story 2
-
-- [X] T016 [P] [US2] Тест admin пользователь существует после миграции в `tests/services/test_role_service.py`
-- [X] T017 [P] [US2] Тест аутентификации с default credentials возвращает токен в `tests/api/v1/controllers/test_auth.py`
-- [ ] T018 [P] [US2] Тест GET /api/v1/users/me для admin возвращает role=admin в `tests/api/v1/controllers/test_users.py` (отложено до Phase 6 - требуется /users/me endpoint)
-
-### Implementation for User Story 2
-
-- [X] T019 [US2] Реализовать миграцию вставки admin user с role_id=3 в `migrations/versions/2026_02_07_add_role_model.py`
-- [X] T020 [US2] Добавить хеширование пароля для admin user в миграции с использованием passlib bcrypt в `migrations/versions/2026_02_07_add_role_model.py`
-- [X] T021 [US2] Добавить DEFAULT_ADMIN_EMAIL и DEFAULT_ADMIN_PASSWORD в AppConfig в `app/config.py` (зависит от T002)
-
-**Checkpoint**: User Stories 1 И 2 работают независимо
-
----
-
 ## Phase 5: User Story 3 - Автоматическое присвоение роли (Priority: P3)
 
 **Goal**: Автоматически присваивать роль "user" при регистрации нового пользователя
@@ -124,15 +100,15 @@
 
 ### Tests for User Story 4
 
-- [ ] T029 [P] [US4] Тест get_current_user_with_role загружает роль в `tests/api/v1/test_dependencies.py`
-- [ ] T030 [P] [US4] Тест GET /api/v1/users/me возвращает роль пользователя в `tests/api/v1/controllers/test_users.py`
-- [ ] T031 [P] [US4] Теж производительности проверки роли <10ms в `tests/api/v1/test_dependencies.py`
+- [X] T029 [P] [US4] Тест get_current_user_with_role загружает роль в `tests/api/v1/test_dependencies.py`
+- [X] T030 [P] [US4] Тест GET /api/v1/users/me возвращает роль пользователя в `tests/api/v1/controllers/test_users.py`
+- [X] T031 [P] [US4] Тест производительности проверки роли <10ms в `tests/api/v1/test_dependencies.py`
 
 ### Implementation for User Story 4
 
-- [ ] T032 [US4] Создать dependency get_current_user_with_role в `app/api/v1/dependencies.py` с Depends(get_current_user)
-- [ ] T033 [US4] Обновить CurrentUserService.get_current_user для lazy load роли через доступ к user.role в `app/services/current_user_service.py`
-- [ ] T034 [US4] Обновить контроллер users.py использование get_current_user_with_role в endpoints где требуется роль в `app/api/v1/controllers/users.py`
+- [X] T032 [US4] Создать dependency get_current_user_with_role в `app/api/v1/dependencies.py` с Depends(get_current_user)
+- [X] T033 [US4] Обновить CurrentUserService.get_current_user для lazy load роли через доступ к user.role в `app/services/current_user_service.py`
+- [X] T034 [US4] Обновить контроллер users.py использование get_current_user_with_role в endpoints где требуется роль в `app/api/v1/controllers/users.py`
 
 **Checkpoint**: Все пользовательские истории независимо функциональны
 
@@ -142,11 +118,10 @@
 
 **Purpose**: Улучшения, затрагивающие несколько пользовательских историй
 
-- [ ] T035 [P] Добавить fixture для создания ролей в `tests/conftest.py`
-- [ ] T036 [P] Добавить fixture для default admin user в `tests/conftest.py`
-- [ ] T037 Обновить все тестовые фикстуры пользователей для включения role_id в `tests/conftest.py`
-- [ ] T038 [P] Запустить все тесты и убедиться что покрытие ветвлений >= 90% через `make test`
-- [ ] T039 [P] Запустить pre-commit hooks проверки качества кода через `pre-commit run --all-files`
+- [X] T035 [P] Добавить fixture для создания ролей в `tests/conftest.py`
+- [X] T036 Обновить все тестовые фикстуры пользователей для включения role_id в `tests/conftest.py`
+- [X] T037 [P] Запустить все тесты и убедиться что покрытие ветвлений >= 90% через `make test`
+- [X] T038 [P] Запустить pre-commit hooks проверки качества кода через `pre-commit run --all-files`
 
 ---
 
@@ -191,7 +166,7 @@
 # Запустить все тесты для User Story 1 вместе:
 Task T010: "Тест GET /api/v1/roles/ возвращает 3 роли"
 Task T011: "Тест GET /api/v1/roles/{id}/ возвращает роль по ID"
-Task T012: "Теж RoleService find_all возвращает все роли"
+Task T012: "Тест RoleService find_all возвращает все роли"
 
 # После того как тесты написаны и FAIL, запустить имплементацию:
 Task T013: "Создать контроллер roles"
@@ -205,9 +180,9 @@ Task T015: "Обновить RoleService методами"
 
 ```bash
 # Параллельное написание тестов:
-Task T022: "Теж создания пользователя без role_id"
-Task T023: "Теж UserService create_user с role_id=None"
-Task T024: "Теж создания пользователя с явным role_id"
+Task T022: "Тест создания пользователя без role_id"
+Task T023: "Тест UserService create_user с role_id=None"
+Task T024: "Тест создания пользователя с явным role_id"
 
 # Параллельная имплементация после тестов:
 Task T025: "Обновить UserCreateRequest схему"
@@ -285,6 +260,5 @@ Task T027: "Обновить UserService.create_user проверку role_id"
 
 **Independent test criteria**:
 - US1: GET /api/v1/roles/ возвращает 3 роли
-- US2: Аутентификация admin@local работает
 - US3: POST /api/v1/users/ без role_id создаёт с role="user"
 - US4: Любой auth запрос загружает роль из БД

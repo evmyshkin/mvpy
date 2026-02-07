@@ -115,7 +115,7 @@ app/
 │   ├── user_service.py       # Существующий (добавить логику роли)
 │   ├── role_service.py       # Новый: бизнес-логика для ролей
 │   └── current_user_service.py  # Существующий (добавить проверку роли)
-└── config.py                 # Существующий (добавить DEFAULT_ADMIN_CREDENTIALS)
+└── config.py                 # Существующий 
 
 tests/
 ├── api/
@@ -150,7 +150,7 @@ migrations/
 
 2. **Alembic data migrations**
    - Задача: Изучить паттерны для миграций данных в Alembic
-   - Контекст: Создание 3 ролей (user, manager, admin) + 1 пользователя (admin)
+   - Контекст: Создание 3 ролей (user, manager, admin)
    - Вопросы: Как вставлять данные в migration, как обрабатывать повторные запуски
 
 3. **Pydantic V2 Annotated types для Enums**
@@ -212,7 +212,6 @@ migrations/
 ### 3. Configuration Updates
 
 **app/config.py**
-- Добавить `DEFAULT_ADMIN_EMAIL`, `DEFAULT_ADMIN_PASSWORD`
 - Или использовать существующие переменные окружения
 
 ### 4. Agent Context Update
@@ -236,11 +235,10 @@ migrations/
 7. **Создать API endpoints для Role**
 8. **Написать тесты** (API, Service, CRUD)
 9. **Обновить схемы** (User response, Role request/response)
-10. **Создать миграцию данных** (3 роли + admin user)
+10. **Создать миграцию данных** (3 роли)
 
 ### Определяющие факторы сложности
 
-- **Data migration**: Вставка ролей + admin user в Alembic migration
 - **ForeignKey constraint**: NOT NULL role_id в users таблице
 - **Backward compatibility**: Существующие пользователи должны получить role_id
 - **Role checking performance**: Оптимизация запросов к БД
