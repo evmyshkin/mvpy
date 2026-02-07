@@ -1,0 +1,401 @@
+### API Контракты: Базовая ролевая модель
+
+**Фича**: 006-base-role-model
+**Дата**: 2025-02-07
+**Базовый URL**: `http://localhost:8000/api/v1`
+
+---
+
+## GET /api/v1/roles/
+
+Получить список всех ролей в системе.
+
+### Request
+
+```http
+GET /api/v1/roles/ HTTP/1.1
+Authorization: Bearer <access_token>
+```
+
+### Response 200 OK
+
+```json
+[
+  {
+    "id": 1,
+    "name": "user",
+    "description": "Обычный пользователь системы",
+    "created_at": "2026-02-07T10:00:00Z",
+    "updated_at": "2026-02-07T10:00:00Z"
+  },
+  {
+    "id": 2,
+    "name": "manager",
+    "description": "Менеджер с расширенными правами",
+    "created_at": "2026-02-07T10:00:00Z",
+    "updated_at": "2026-02-07T10:00:00Z"
+  },
+  {
+    "id": 3,
+    "name": "admin",
+    "description": "Администратор системы",
+    "created_at": "2026-02-07T10:00:00Z",
+    "updated_at": "2026-02-07T10:00:00Z"
+  }
+]
+```
+
+### Ошибки
+
+| Код | Описание |
+|-----|----------|
+| 401 | Отсутствует или невалидный токен авторизации |
+
+---
+
+## GET /api/v1/roles/{id}/
+
+Получить роль по ID.
+
+### Request
+
+```http
+GET /api/v1/roles/1/ HTTP/1.1
+Authorization: Bearer <access_token>
+```
+
+### Response 200 OK
+
+```json
+{
+  "id": 1,
+  "name": "user",
+  "description": "Обычный пользователь системы",
+  "created_at": "2026-02-07T10:00:00Z",
+  "updated_at": "2026-02-07T10:00:00Z"
+}
+```
+
+### Ошибки
+
+| Код | Описание |
+|-----|----------|
+| 401 | Отсутствует или невалидный токен авторизации |
+| 404 | Роль с указанным id не найдена |
+
+---
+
+## GET /api/v1/users/me
+
+Получить информацию о текущем пользователе (обновлённый: добавлено поле role).
+
+### Request
+
+```http
+GET /api/v1/users/me HTTP/1.1
+Authorization: Bearer <access_token>
+```
+
+### Response 200 OK
+
+```json
+{
+  "id": 1,
+  "email": "user@example.com",
+  "first_name": "Иван",
+  "last_name": "Иванов",
+  "is_active": true,
+  "role": {
+    "id": 1,
+    "name": "user",
+    "description": "Обычный пользователь системы"
+  },
+  "created_at": "2026-02-07T10:00:00Z",
+  "updated_at": "2026-02-07T10:00:00Z"
+}
+```
+
+### Ошибки
+
+| Код | Описание |
+|-----|----------|
+| 401 | Отсутствует или невалидный токен авторизации |
+
+### Примечания
+
+- Поле `role` содержит объект роли пользователя
+- Роль загружается из БД при каждом запросе (не из JWT payload)
+
+---
+
+## POST /api/v1/users/
+
+Создать нового пользователя (обновлённый: role_id опционален).
+
+### Request
+
+**Без указания роли** (по умолчанию "user"):
+
+```http
+POST /api/v1/users/ HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer <access_token>
+
+{
+  "email": "newuser@example.com",
+  "first_name": "Пётр",
+  "last_name": "Петров",
+  "password": "Password123",
+  "repeat_password": "Password123"
+}
+```
+
+**С указанием роли** (только для администраторов):
+
+```http
+POST /api/v1/users/ HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer <admin_access_token>
+
+{
+  "email": "manager@example.com",
+  "first_name": "Сидор",
+  "last_name": "Сидоров",
+  "password": "Password123",
+  "repeat_password": "Password123",
+  "role_id": 2
+}
+```
+
+### Response 201 Created
+
+```json
+{
+  "id": 10,
+  "email": "newuser@example.com",
+  "first_name": "Пётр",
+  "last_name": "Петров",
+  "is_active": true,
+  "role": {
+    "id": 1,
+    "name": "user",
+    "description": "Обычный пользователь системы"
+  },
+  "created_at": "2026-02-07T10:05:00Z",
+  "updated_at": "2026-02-07T10:05:00Z"
+}
+```
+
+### Ошибки
+
+| Код | Описание |
+|-----|----------|
+| 400 | Невалидные данные запроса (например, неверный email) |
+| 401 | Отсутствует или невалидный токен авторизации |
+| 409 | Пользователь с таким email уже существует |
+| 422 | Ошибка валидации (например, role_id не существует) |
+
+### Примечания
+
+- Если `role_id` не указан → автоматически присваивается роль "user" (id=1)
+- Если `role_id` указан → проверяется существование роли
+- Поле `role_id` может быть указано только пользователями с ролью "admin" (будет реализовано в будущих фичах)
+
+---
+
+## GET /api/v1/users/{id}/
+
+Получить пользователя по ID (обновлённый: добавлено поле role).
+
+### Request
+
+```http
+GET /api/v1/users/1/ HTTP/1.1
+Authorization: Bearer <access_token>
+```
+
+### Response 200 OK
+
+```json
+{
+  "id": 1,
+  "email": "user@example.com",
+  "first_name": "Иван",
+  "last_name": "Иванов",
+  "is_active": true,
+  "role": {
+    "id": 1,
+    "name": "user",
+    "description": "Обычный пользователь системы"
+  },
+  "created_at": "2026-02-07T10:00:00Z",
+  "updated_at": "2026-02-07T10:00:00Z"
+}
+```
+
+### Ошибки
+
+| Код | Описание |
+|-----|----------|
+| 401 | Отсутствует или невалидный токен авторизации |
+| 403 | Доступ запрещён (недостаточно прав) |
+| 404 | Пользователь не найден |
+
+---
+
+## PUT /api/v1/users/{id}/
+
+Обновить пользователя (обновлённый: role_id можно изменить).
+
+### Request
+
+```http
+PUT /api/v1/users/1/ HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer <admin_access_token>
+
+{
+  "email": "updated@example.com",
+  "first_name": "Иван",
+  "last_name": "Иванов",
+  "role_id": 2
+}
+```
+
+### Response 200 OK
+
+```json
+{
+  "id": 1,
+  "email": "updated@example.com",
+  "first_name": "Иван",
+  "last_name": "Иванов",
+  "is_active": true,
+  "role": {
+    "id": 2,
+    "name": "manager",
+    "description": "Менеджер с расширенными правами"
+  },
+  "created_at": "2026-02-07T10:00:00Z",
+  "updated_at": "2026-02-07T10:10:00Z"
+}
+```
+
+### Ошибки
+
+| Код | Описание |
+|-----|----------|
+| 400 | Невалидные данные запроса |
+| 401 | Отсутствует или невалидный токен авторизации |
+| 403 | Доступ запрещён (недостаточно прав для изменения роли) |
+| 404 | Пользователь не найден |
+| 422 | Ошибка валидации (например, role_id не существует) |
+
+### Примечания
+
+- Изменение `role_id` разрешено только администраторам (будет реализовано в будущих фичах)
+- Пользователь не может изменить свою собственную роль (будет реализовано в будущих фичах)
+
+---
+
+## DELETE /api/v1/users/{id}/
+
+Деактивировать пользователя (мягкое удаление).
+
+> **Примечание**: Этот endpoint уже существует, изменений не требует.
+> Роль пользователя сохраняется в БД, но `is_active` устанавливается в `false`.
+
+### Request
+
+```http
+DELETE /api/v1/users/1/ HTTP/1.1
+Authorization: Bearer <access_token>
+```
+
+### Response 200 OK
+
+```json
+{
+  "id": 1,
+  "email": "user@example.com",
+  "first_name": "Иван",
+  "last_name": "Иванов",
+  "is_active": false,
+  "role": {
+    "id": 1,
+    "name": "user",
+    "description": "Обычный пользователь системы"
+  },
+  "created_at": "2026-02-07T10:00:00Z",
+  "updated_at": "2026-02-07T10:15:00Z"
+}
+```
+
+---
+
+## Pydantic Схемы
+
+### RoleResponse
+
+```python
+# app/api/v1/schemas/roles.py
+from typing import Literal
+from datetime import datetime
+from pydantic import BaseModel
+
+class RoleResponse(BaseModel):
+    """Схема ответа для роли."""
+
+    id: int
+    name: Literal["user", "manager", "admin"]
+    description: str | None = None
+    created_at: datetime
+    updated_at: datetime
+```
+
+### UserResponse (обновлённый)
+
+```python
+# app/api/v1/schemas/users.py
+class UserResponse(BaseModel):
+    """Схема ответа для пользователя (обновлённая)."""
+
+    id: int
+    email: str
+    first_name: str
+    last_name: str
+    is_active: bool
+    role: RoleResponse  # <-- НОВОЕ поле
+    created_at: datetime
+    updated_at: datetime
+```
+
+### UserCreateRequest (обновлённый)
+
+```python
+# app/api/v1/schemas/users.py
+class UserCreateRequest(BaseModel):
+    """Схема запроса на создание пользователя (обновлённая)."""
+
+    email: EmailStr
+    first_name: str
+    last_name: str
+    password: str
+    repeat_password: str
+    role_id: int | None = None  # <-- НОВОЕ опциональное поле
+```
+
+---
+
+## Summary
+
+| Endpoint | Изменён | Новое поле | Описание |
+|----------|---------|------------|----------|
+| GET /api/v1/roles/ | ✅ Новый | - | Список всех ролей |
+| GET /api/v1/roles/{id}/ | ✅ Новый | - | Получить роль по ID |
+| GET /api/v1/users/me | ⚠️ Обновлён | +role | Роль в ответе |
+| POST /api/v1/users/ | ⚠️ Обновлён | +role_id (опц.) | Автоматическая роль при регистрации |
+| GET /api/v1/users/{id}/ | ⚠️ Обновлён | +role | Роль в ответе |
+| PUT /api/v1/users/{id}/ | ⚠️ Обновлён | +role_id | Изменение роли |
+| DELETE /api/v1/users/{id}/ | ❌ Без изменений | - | Роль сохраняется |
+
